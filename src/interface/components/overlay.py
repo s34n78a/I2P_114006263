@@ -9,16 +9,14 @@ class OverlayPanel(UIComponent):
         self,
         x: int, y: int,
         width: int, height: int,
-        background_color=(230, 230, 230),
-        border_color=(50, 50, 50),
-        border_radius=16,
-        border_width=4
+        background_image=None
     ):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.background_image = background_image
         self.rect = pg.Rect(x, y, width, height)
-        self.bg = background_color
-        self.border = border_color
-        self.border_radius = border_radius
-        self.border_width = border_width
         self.visible = False
         
         # list buat save child component (button, image, etc.)
@@ -51,9 +49,9 @@ class OverlayPanel(UIComponent):
         dark.fill((0, 0, 0))
         screen.blit(dark, (0, 0))
 
-        # Gambar panel
-        pg.draw.rect(screen, self.bg, self.rect, border_radius=self.border_radius)
-        pg.draw.rect(screen, self.border, self.rect, self.border_width, border_radius=self.border_radius)
+        # Draw overlay panel background image *on top of the dark*
+        if self.background_image:
+            screen.blit(self.background_image, (self.rect.x, self.rect.y))
 
         # Gambar semua child element
         for child in self.children:

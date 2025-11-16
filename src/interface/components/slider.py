@@ -38,3 +38,4 @@ class Slider:
 
     def get_value(self):
         return self.value
+

@@ -17,8 +17,9 @@ pg.init()
 
 # untuk ngatur font
 pg.font.init()
-minecraft_font = pg.font.Font('assets/fonts/Minecraft.ttf', 24)
-pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 24)
+minecraft_font = pg.font.Font('assets/fonts/Minecraft.ttf', 20) # text size 20
+title_font = pg.font.Font('assets/fonts/Minecraft.ttf', 30) # text size 30
+pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 class GameScene(Scene):
     game_manager: GameManager
@@ -42,11 +43,19 @@ class GameScene(Scene):
         self.sprite_online = Sprite("ingame_ui/options1.png", (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE))
         
         # Menu Button buat buka overlay (Checkpoint 2 To do 01)
-        w, h = 500, 400
+        w, h = 560, 450
         x = (GameSettings.SCREEN_WIDTH - w) // 2
         y = (GameSettings.SCREEN_HEIGHT - h) // 2
 
-        self.overlay = OverlayPanel(x, y, w, h)
+        # Load background overlay
+        self.overlay_bg = pg.image.load(
+            "assets/images/UI/raw/UI_Flat_FrameSlot03a.png"
+        ).convert_alpha()
+
+        # Scale sampai sesuai ukuran overlay panel
+        self.overlay_bg = pg.transform.scale(self.overlay_bg, (w, h))
+
+        self.overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
 
         self.setting_button = Button(
             "UI/button_setting.png",
@@ -71,17 +80,18 @@ class GameScene(Scene):
 
         # Checkbox for mute
         self.checkbox_mute = Checkbox(
-            x=(GameSettings.SCREEN_WIDTH // 2 - 170),
-            y=(GameSettings.SCREEN_HEIGHT // 2 - 90),
-            checked=False,
+            x=(GameSettings.SCREEN_WIDTH // 2 - 190),
+            y=(GameSettings.SCREEN_HEIGHT // 2 - 40),
+            size=24,
+            checked=GameSettings.MUTE,
             label="Mute Audio"
         )
         self.overlay.add_child(self.checkbox_mute)
 
         # Slider for volume
         self.slider_volume = Slider(
-            x=(GameSettings.SCREEN_WIDTH // 2 - 170),
-            y=(GameSettings.SCREEN_HEIGHT // 2 - 40),
+            x=(GameSettings.SCREEN_WIDTH // 2 - 190),
+            y=(GameSettings.SCREEN_HEIGHT // 2 - 80),
             width=200,
             value=GameSettings.AUDIO_VOLUME
         )
@@ -112,16 +122,10 @@ class GameScene(Scene):
         if self.show_overlay:
             self.overlay.update(dt)
 
-            # Update mute setting
-            if self.checkbox_mute.is_checked():
-                sound_manager.pause_all()
-            else:
-                sound_manager.resume_all()
-
-            # Update volume setting
+            # update volume dan mute setting
             GameSettings.AUDIO_VOLUME = self.slider_volume.get_value()
-            if sound_manager.current_bgm:
-                sound_manager.current_bgm.set_volume(GameSettings.AUDIO_VOLUME)
+            GameSettings.MUTE = self.checkbox_mute.is_checked()
+            sound_manager.apply_settings()
             
             return # biar player ga bisa gerak di belakang overlay
 
@@ -146,10 +150,18 @@ class GameScene(Scene):
     def open_overlay(self):
         self.show_overlay = True
         self.overlay.show()
+        
+        # Sync overlay UI to current global settings
+        self.slider_volume.value = GameSettings.AUDIO_VOLUME
+        self.checkbox_mute.checked = GameSettings.MUTE
 
     def close_overlay(self):
         self.show_overlay = False
         self.overlay.hide()
+
+        # Sync overlay UI to current global settings
+        self.slider_volume.value = GameSettings.AUDIO_VOLUME
+        self.checkbox_mute.checked = GameSettings.MUTE
         
     @override
     def draw(self, screen: pg.Surface):        
@@ -190,15 +202,11 @@ class GameScene(Scene):
             self.overlay.draw(screen)
 
             # judul settings
-            title_text = minecraft_font.render("Settings", False, (0, 0, 0))
-            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 170, GameSettings.SCREEN_HEIGHT // 2 - 150))
+            title_text = title_font.render("Settings", False, (0, 0, 0))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 180, GameSettings.SCREEN_HEIGHT // 2 - 165))
             screen.blit(title_text, title_rect)
-            
-            # Components buat setting volume dan mute
-            self.checkbox_mute.draw(screen)
-            self.slider_volume.draw(screen)
 
             # Labels buat slider volume
             vol_text = minecraft_font.render(f"Volume: {int(self.slider_volume.get_value() * 100)}%", False, (0, 0, 0))
-            screen.blit(vol_text, (GameSettings.SCREEN_WIDTH // 2 - 170,
-                                GameSettings.SCREEN_HEIGHT // 2 - 65))
+            screen.blit(vol_text, (GameSettings.SCREEN_WIDTH // 2 - 190,
+                                GameSettings.SCREEN_HEIGHT // 2 - 110))

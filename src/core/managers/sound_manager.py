@@ -1,5 +1,5 @@
 import pygame as pg
-from src.utils import load_sound, GameSettings
+from src.utils import load_sound, GameSettings, Logger
 
 class SoundManager:
     def __init__(self):
@@ -15,6 +15,9 @@ class SoundManager:
         audio.play(-1)
         self.current_bgm = audio
         
+        # langsung apply global settings
+        self.apply_settings()
+        
     def pause_all(self):
         pg.mixer.pause()
 
@@ -29,3 +32,16 @@ class SoundManager:
     def stop_all_sounds(self):
         pg.mixer.stop()
         self.current_bgm = None
+
+    def apply_settings(self):
+        #Logger.info(f"apply_settings: volume={GameSettings.AUDIO_VOLUME}, mute={GameSettings.MUTE}")
+        
+        # Apply volume
+        if self.current_bgm:
+            self.current_bgm.set_volume(GameSettings.AUDIO_VOLUME)
+
+        # Apply mute state
+        if GameSettings.MUTE:
+            pg.mixer.pause()
+        else:
+            pg.mixer.unpause()
