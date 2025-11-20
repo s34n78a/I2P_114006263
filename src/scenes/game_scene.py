@@ -1,6 +1,7 @@
 import pygame as pg
 import threading
 import time
+import os
 
 from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
@@ -19,6 +20,7 @@ pg.init()
 pg.font.init()
 minecraft_font = pg.font.Font('assets/fonts/Minecraft.ttf', 20) # text size 20
 title_font = pg.font.Font('assets/fonts/Minecraft.ttf', 30) # text size 30
+in_bag_font = pg.font.Font('assets/fonts/Minecraft.ttf', 15) # text size 15
 pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 class GameScene(Scene):
@@ -55,8 +57,13 @@ class GameScene(Scene):
         # Scale sampai sesuai ukuran overlay panel
         self.overlay_bg = pg.transform.scale(self.overlay_bg, (w, h))
 
-        self.overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
+        # bikin overlay untuk setting
+        self.setting_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
 
+        # bikin overlay untuk backpack
+        self.backpack_overlay = OverlayPanel(x, y, w+20, h+20, background_image=self.overlay_bg)
+
+        # Button buat buka overlay setting
         self.setting_button = Button(
             "UI/button_setting.png",
             "UI/button_setting_hover.png",
@@ -64,19 +71,41 @@ class GameScene(Scene):
             y=8,
             width=40,
             height=40,
-            on_click=self.open_overlay
+            on_click=self.open_setting_overlay
         )
 
-        # Close button buat overlay
-        self.button_x = Button(
+        # Button buat buka overlay backpack
+        self.backpack_button = Button(
+            "UI/button_backpack.png",
+            "UI/button_backpack_hover.png",
+            x=GameSettings.SCREEN_WIDTH - 96,
+            y=8,
+            width=40,
+            height=40,
+            on_click=self.open_backpack_overlay
+        )
+
+        # Close button buat overlay setting
+        self.button_x_setting = Button(
             "UI/button_x.png", "UI/button_x_hover.png",
             x=(GameSettings.SCREEN_WIDTH // 2) + 200,
             y=(GameSettings.SCREEN_HEIGHT // 2) - 190,
             width=40,
             height=40,
-            on_click=self.close_overlay
+            on_click=self.close_setting_overlay
         )
-        self.overlay.add_child(self.button_x)
+        self.setting_overlay.add_child(self.button_x_setting)
+
+        # Close button buat overlay backpack
+        self.button_x_backpack = Button(
+            "UI/button_x.png", "UI/button_x_hover.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) + 200,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 190,
+            width=40,
+            height=40,
+            on_click=self.close_backpack_overlay
+        )
+        self.backpack_overlay.add_child(self.button_x_backpack)
 
         # Save Button
         self.button_save = Button(
@@ -84,23 +113,23 @@ class GameScene(Scene):
             img_hovered_path="UI/button_save_hover.png",
             x=(GameSettings.SCREEN_WIDTH // 2 - 190),
             y=(GameSettings.SCREEN_HEIGHT // 2 + 20),
-            width=100,
-            height=40,
+            width=75,
+            height=75,
             on_click=self.save_game
         )
-        self.overlay.add_child(self.button_save)
+        self.setting_overlay.add_child(self.button_save)
 
         # Load Button
         self.button_load = Button(
             img_path="UI/button_load.png",
             img_hovered_path="UI/button_load_hover.png",
-            x=(GameSettings.SCREEN_WIDTH // 2 + 50),
+            x=(GameSettings.SCREEN_WIDTH // 2 - 100),
             y=(GameSettings.SCREEN_HEIGHT // 2 + 20),
-            width=100,
-            height=40,
+            width=75,
+            height=75,
             on_click=self.load_game
         )
-        self.overlay.add_child(self.button_load)
+        self.setting_overlay.add_child(self.button_load)
 
         # Checkbox for mute
         self.checkbox_mute = Checkbox(
@@ -110,7 +139,7 @@ class GameScene(Scene):
             checked=GameSettings.MUTE,
             label="Mute Audio"
         )
-        self.overlay.add_child(self.checkbox_mute)
+        self.setting_overlay.add_child(self.checkbox_mute)
 
         # Slider for volume
         self.slider_volume = Slider(
@@ -119,9 +148,20 @@ class GameScene(Scene):
             width=200,
             value=GameSettings.AUDIO_VOLUME
         )
-        self.overlay.add_child(self.slider_volume)
+        self.setting_overlay.add_child(self.slider_volume)
 
-        self.show_overlay = False
+        self.show_setting_overlay = False
+        self.show_backpack_overlay = False
+
+        # Backpack list layout (buat ngegambar, 2 kolom)
+        self.monster_column_x = 400
+        self.item_column_x = GameSettings.SCREEN_WIDTH // 2 + 80
+        self.list_top_y = 220
+        self.list_spacing = 60
+        self._sprite_cache = {}
+
+        # Simple sprite cache biar ga loading gambar tiap frame
+        #self._sprite_cache: dict[str, pg.Surface] = {}
 
     @override
     def enter(self) -> None:
@@ -139,18 +179,26 @@ class GameScene(Scene):
         # Cek ada next scene ga
         self.game_manager.try_switch_map()
 
-        # Update button menu
+        # Update button setting
         self.setting_button.update(dt)
 
-        # Update overlay button kalau overlay dibuka
-        if self.show_overlay:
-            self.overlay.update(dt)
+        # Update button backpack
+        self.backpack_button.update(dt)
+
+        # Update overlay button kalau overlay setting dibuka
+        if self.show_setting_overlay:
+            self.setting_overlay.update(dt)
 
             # update volume dan mute setting
             GameSettings.AUDIO_VOLUME = self.slider_volume.get_value()
             GameSettings.MUTE = self.checkbox_mute.is_checked()
             sound_manager.apply_settings()
             
+            return # biar player ga bisa gerak di belakang overlay
+        
+        # Update overlay button kalau overlay backpack dibuka
+        if self.show_backpack_overlay:
+            self.backpack_overlay.update(dt)
             return # biar player ga bisa gerak di belakang overlay
 
         # Update player dan enemy
@@ -170,22 +218,30 @@ class GameScene(Scene):
             )
     
     # buka tutup overlay
-    def open_overlay(self):
-        self.show_overlay = True
-        self.overlay.show()
+    def open_setting_overlay(self):
+        self.show_setting_overlay = True
+        self.setting_overlay.show()
         
         # Sync overlay UI dari global settings
         self.slider_volume.value = GameSettings.AUDIO_VOLUME
         self.checkbox_mute.checked = GameSettings.MUTE
 
-    def close_overlay(self):
-        self.show_overlay = False
-        self.overlay.hide()
+    def open_backpack_overlay(self):
+        self.show_backpack_overlay = True
+        self.backpack_overlay.show()
+
+    def close_setting_overlay(self):
+        self.show_setting_overlay = False
+        self.setting_overlay.hide()
 
         # Sync overlay UI dari global settings
         self.slider_volume.value = GameSettings.AUDIO_VOLUME
         self.checkbox_mute.checked = GameSettings.MUTE
-        
+
+    def close_backpack_overlay(self):
+        self.show_backpack_overlay = False
+        self.backpack_overlay.hide()
+
     @override
     def draw(self, screen: pg.Surface):        
         if self.game_manager.player:
@@ -217,12 +273,15 @@ class GameScene(Scene):
                     self.sprite_online.update_pos(pos)
                     self.sprite_online.draw(screen)
 
-        # selalu bikin menu button
+        # selalu bikin setting button
         self.setting_button.draw(screen)
 
-        # Bikin layar overlay kalo dibuka
-        if self.show_overlay:
-            self.overlay.draw(screen)
+        # selalu bikin backpack button
+        self.backpack_button.draw(screen)
+
+        # Bikin layar overlay setting kalo dibuka
+        if self.show_setting_overlay:
+            self.setting_overlay.draw(screen)
 
             # judul settings
             title_text = title_font.render("Settings", False, (0, 0, 0))
@@ -233,6 +292,162 @@ class GameScene(Scene):
             vol_text = minecraft_font.render(f"Volume: {int(self.slider_volume.get_value() * 100)}%", False, (0, 0, 0))
             screen.blit(vol_text, (GameSettings.SCREEN_WIDTH // 2 - 190,
                                 GameSettings.SCREEN_HEIGHT // 2 - 110))
+            
+        # Bikin layar overlay backpack kalo dibuka
+        elif self.show_backpack_overlay:
+            self.backpack_overlay.draw(screen)
+
+            # judul backpack
+            title_text = title_font.render("Backpack", False, (0, 0, 0))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 160, GameSettings.SCREEN_HEIGHT // 2 - 165))
+            screen.blit(title_text, title_rect)
+
+            # gambar list monster
+            self.draw_monster_list(screen)
+
+            # gambar list item
+            self.draw_item_list(screen)
+
+    def _get_bag_lists(self):
+        """
+        Return tuple (monsters_list, items_list).
+        Handles:
+         - bag as dict with keys "monsters"/"items"
+         - bag as object with attributes .monsters / .items
+         - bag as object with method to_dict()
+         - bag as object with get_monsters()/get_items()
+        Always returns lists (possibly empty).
+        """
+        bag = getattr(self.game_manager, "bag", None)
+
+        # None
+        if bag is None:
+            return [], []
+
+        # kalau bentuk dict dari JSON
+        if isinstance(bag, dict):
+            monsters = bag.get("monsters", []) or []
+            items = bag.get("items", []) or []
+            return monsters, items
+
+        # kalau to_dict yang return dict
+        if hasattr(bag, "to_dict") and callable(getattr(bag, "to_dict")):
+            try:
+                d = bag.to_dict()
+                if isinstance(d, dict):
+                    monsters = d.get("monsters", []) or []
+                    items = d.get("items", []) or []
+                    return monsters, items
+            except Exception:
+                pass
+
+        # Kalau atribut monsters/items
+        if hasattr(bag, "monsters") or hasattr(bag, "items"):
+            monsters = getattr(bag, "monsters", []) or []
+            items = getattr(bag, "items", []) or []
+            return monsters, items
+
+        # Kalau object expose getter methods
+        if hasattr(bag, "get_monsters") or hasattr(bag, "get_items"):
+            try:
+                monsters = bag.get_monsters() if hasattr(bag, "get_monsters") else []
+                items = bag.get_items() if hasattr(bag, "get_items") else []
+                return monsters or [], items or []
+            except Exception:
+                pass
+
+        return monsters, items
+    
+    def _load_cached_sprite(self, path, size):
+        if not path:
+            return None
+
+        key = f"{path}:{size}"
+        if key in self._sprite_cache:
+            return self._sprite_cache[key]
+
+        # load dari: assets/images/<path_from_json>
+        full_path = f"assets/images/{path}"
+
+        try:
+            surf = pg.image.load(full_path).convert_alpha()
+            surf = pg.transform.scale(surf, size)
+            self._sprite_cache[key] = surf
+            print("[LOADED SPRITE]", full_path)
+            return surf
+        except Exception as e:
+            # Print gagal sekali aja
+            seen = getattr(self, "_failed_sprites", set())
+            if path not in seen:
+                seen.add(path)
+                setattr(self, "_failed_sprites", seen)
+                print("[FAILED TO LOAD SPRITE]", full_path, "error:", e)
+            return None
+
+
+    def draw_monster_list(self, screen):
+        monsters, _ = self._get_bag_lists()
+
+        x = self.monster_column_x
+        y = self.list_top_y
+
+        # kalau ga ada monster
+        if not monsters:
+            hint = in_bag_font.render("(no monsters)", False, (100, 100, 100))
+            screen.blit(hint, (x, y))
+            return
+
+        for m in monsters:
+            if isinstance(m, dict): # takutnya bukan dict
+                sprite_path = m.get("sprite_path")
+                name = m.get("name", "Unknown")
+                level = m.get("level", "?")
+                hp = m.get("hp", "?")
+                max_hp = m.get("max_hp", "?")
+            else:
+                sprite_path = getattr(m, "sprite_path", None)
+                name = getattr(m, "name", "Unknown")
+                level = getattr(m, "level", "?")
+                hp = getattr(m, "hp", "?")
+                max_hp = getattr(m, "max_hp", "?")
+
+            sprite = self._load_cached_sprite(sprite_path, (40, 40))
+            if sprite:
+                screen.blit(sprite, (x, y))
+
+            text = in_bag_font.render(f"{name} Lv:{level} HP:{hp}/{max_hp}", False, (0, 0, 0))
+            screen.blit(text, (x + 60, y + 10))
+            y += self.list_spacing
+
+    def draw_item_list(self, screen):
+        _, items = self._get_bag_lists()
+
+        x = self.item_column_x
+        y = self.list_top_y
+
+        # kalau ga ada item
+        if not items:
+            hint = in_bag_font.render("(no items)", False, (100, 100, 100))
+            screen.blit(hint, (x, y))
+            return
+
+        for it in items:
+            if isinstance(it, dict):
+                sprite_path = it.get("sprite_path")
+                name = it.get("name", "Unknown")
+                count = it.get("count", 0)
+            else:
+                sprite_path = getattr(it, "sprite_path", None)
+                name = getattr(it, "name", "Unknown")
+                count = getattr(it, "count", 0)
+
+            sprite = self._load_cached_sprite(sprite_path, (40, 40))
+            if sprite:
+                screen.blit(sprite, (x, y))
+
+            text = in_bag_font.render(f"{name} x{count}", False, (0, 0, 0))
+            screen.blit(text, (x + 50, y + 10))
+            y += self.list_spacing
 
     def save_game(self):
         # Save game state

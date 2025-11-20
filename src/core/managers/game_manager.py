@@ -34,6 +34,8 @@ class GameManager:
         self.maps = maps
         self.current_map_key = start_map
         self.previous_map_key = None # Untuk nyimpen map sebelumnya pas teleport [TO DO HACKATHON 6]
+        self.teleport_cooldown = 0
+
         self.player = player
         self.enemy_trainers = enemy_trainers
         self.bag = bag if bag is not None else Bag([], [])
@@ -74,14 +76,46 @@ class GameManager:
         self.previous_map_key = self.current_map_key # Simpen map pas teleport [TO DO HACKATHON 6]
 
     def try_switch_map(self) -> None:
-        if self.should_change_scene:
-            self.current_map_key = self.next_map
-            self.next_map = ""
-            self.should_change_scene = False
+        # reduce cooldown timer
+        if self.teleport_cooldown > 0:
+            self.teleport_cooldown -= 1
+   
+        #if self.should_change_scene:
+        #    self.current_map_key = self.next_map
+        #    self.next_map = ""
+        #    self.should_change_scene = False
             
             # biar teleport ga ke spawn terus [TO DO HACKATHON 6]
             #if self.player:
             #    self.player.position = self.maps[self.current_map_key].spawn
+
+        if not self.should_change_scene:
+            return
+
+        # Switch
+        old_map = self.current_map_key
+        new_map = self.next_map
+        self.current_map_key = new_map
+        self.next_map = ""
+        self.should_change_scene = False
+
+        # Look for return teleporter (new map → previous map)
+        return_tp = None
+        for tp in self.maps[new_map].teleporters:
+            if tp.destination == old_map:
+                return_tp = tp
+                break
+
+        # Move player safely
+        if self.player:
+            if return_tp:
+                self.player.position = return_tp.pos.copy()
+            else:
+                # safe fallback: map spawn
+                self.player.position = self.maps[new_map].spawn.copy()
+
+            # set cooldown to prevent immediate retrigger
+            self.teleport_cooldown = 15    # ~0.25s at 60 FPS
 
     def check_collision(self, rect: pg.Rect) -> bool:
         if self.current_map.check_collision(rect):
@@ -119,16 +153,17 @@ class GameManager:
 
             # Save trainers for this map
             block["enemy_trainers"] = [t.to_dict() for t in self.enemy_trainers.get(key, [])]
-            spawn = self.player_spawns.get(key)
-            if spawn: # Simpen posisi spawn player di map ini, dicek pake if biar ga error
-                block["player"] = {
-                    "x": spawn.x / GameSettings.TILE_SIZE,
-                    "y": spawn.y / GameSettings.TILE_SIZE
-                }
-            else:
-                block["player"] = {"x": 0, "y": 0}
+            #spawn = self.player_spawns.get(key)
+            #if spawn: # Simpen posisi spawn player di map ini, dicek pake if biar ga error
+            #    block["player"] = {
+            #        "x": spawn.x / GameSettings.TILE_SIZE,
+            #        "y": spawn.y / GameSettings.TILE_SIZE
+            #    }
+            #else:
+            #    block["player"] = {"x": 0, "y": 0}
 
             map_blocks.append(block)
+            
         return {
             "map": map_blocks,
             "current_map": self.current_map_key,

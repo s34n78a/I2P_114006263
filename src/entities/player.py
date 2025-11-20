@@ -14,6 +14,7 @@ class Player(Entity):
     def __init__(self, x: float, y: float, game_manager: GameManager) -> None:
         super().__init__(x, y, game_manager)
         self.last_teleport_pos = None # biar ga teleport terus
+        self.in_teleport = False
 
 
     # cek collision sama enemy trainers lain
@@ -79,7 +80,7 @@ class Player(Entity):
         # buat debugging
         # Logger.debug(f"Player rect: {rect}")
 
-        # --- Geser X axis ---
+        # geser X
         rect.x += move_x
         if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect):
             self.position.x += move_x
@@ -90,7 +91,7 @@ class Player(Entity):
             elif move_x < 0:
                 self.position.x = rect.x // tile_size * tile_size + tile_size
 
-        # --- Geser Y axis ---
+        # geser Y
         rect.y += move_y
         if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect):
             self.position.y += move_y
@@ -102,25 +103,16 @@ class Player(Entity):
 
         # Cek teleportasi [hackathon 5]
         tp = self.game_manager.current_map.check_teleport(self.position)
-        if tp and (self.last_teleport_pos is None or
-        self.position.distance_to(self.last_teleport_pos) > GameSettings.TILE_SIZE):
-            
-            dest = tp.destination
-            
-            # Inget dari mana sebelum teleport
-            prev_map_name = self.game_manager.current_map_key
-            
-            # ganti map
-            self.game_manager.switch_map(dest)
-            self.game_manager.try_switch_map()
-
-            for t in self.game_manager.current_map.teleporters:
-                if t.destination == prev_map_name:
-                    self.position = t.pos.copy()
-                    break
-
-            self.last_teleport_pos = self.position.copy() 
-            # Save teleport terakhir biar ga teleport terus
+        
+        if tp:
+            if not self.in_teleport:  # player masuk
+                self.in_teleport = True
+                self.game_manager.previous_map_key = self.game_manager.current_map_key
+                self.game_manager.switch_map(tp.destination)
+            # else: player masih di dalem → do nothing
+        else:
+            # player keluar dari teleporter → reset
+            self.in_teleport = False
 
         super().update(dt)
 
