@@ -132,7 +132,7 @@
     ]
   },
   "audio": {
-    "volume": 0.415,
-    "mute": true
+    "volume": 0.86,
+    "mute": false
   }
 }

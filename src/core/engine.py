@@ -6,6 +6,7 @@ from .services import scene_manager, input_manager
 from src.scenes.menu_scene import MenuScene
 from src.scenes.game_scene import GameScene
 from src.scenes.setting_scene import SettingScene # [TODO HACKATHON 5] Import the setting scene di sini
+from src.scenes.battle_scene import BattleScene # checkpoint 2 Import battle scene
 
 class Engine:
 
@@ -26,6 +27,7 @@ class Engine:
 
         scene_manager.register_scene("menu", MenuScene())
         scene_manager.register_scene("game", GameScene())
+        scene_manager.register_scene("battle", BattleScene()) # checkpoint 2 Register battle scene
         '''
         [TODO HACKATHON 5]
         Register the setting scene here

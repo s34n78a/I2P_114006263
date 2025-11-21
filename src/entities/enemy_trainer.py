@@ -10,6 +10,8 @@ from src.core import GameManager
 from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera
 
+from src.scenes.battle_scene import BattleScene 
+
 
 class EnemyTrainerClassification(Enum):
     STATIONARY = "stationary"
@@ -56,7 +58,9 @@ class EnemyTrainer(Entity):
         self._movement.update(self, dt)
         self._has_los_to_player()
         if self.detected and input_manager.key_pressed(pygame.K_SPACE):
-            pass
+            # checkpoint 2
+            BattleScene.prepare(self)
+            scene_manager.change_scene("battle")
         self.animation.update_pos(self.position)
 
     @override
@@ -85,6 +89,38 @@ class EnemyTrainer(Entity):
         '''
         TODO: Create hitbox to detect line of sight of the enemies towards the player
         '''
+        size = GameSettings.TILE_SIZE
+
+        # checkpoint 2
+        # LOS panjangnya 3 tiles & lebar 1 tile dari posisi enemy trainer ke atas kiri kanan bawah
+        if self.los_direction == Direction.UP:
+            return pygame.Rect(
+                self.position.x,
+                self.position.y - size * 3,
+                size,
+                size * 3
+            )
+        elif self.los_direction == Direction.DOWN:
+            return pygame.Rect(
+                self.position.x,
+                self.position.y + size,
+                size,
+                size * 3
+            )
+        elif self.los_direction == Direction.LEFT:
+            return pygame.Rect(
+                self.position.x - size * 3,
+                self.position.y,
+                size * 3,
+                size
+            )
+        elif self.los_direction == Direction.RIGHT:
+            return pygame.Rect(
+                self.position.x + size,
+                self.position.y,
+                size * 3,
+                size
+            )
         return None
 
     def _has_los_to_player(self) -> None:
@@ -100,7 +136,12 @@ class EnemyTrainer(Entity):
         TODO: Implement line of sight detection
         If it's detected, set self.detected to True
         '''
-        self.detected = False
+
+        # checkpoint 2
+        if los_rect.colliderect(player.animation.rect):
+            self.detected = True
+        else:
+            self.detected = False
 
     @classmethod
     @override
