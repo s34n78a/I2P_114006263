@@ -23,7 +23,7 @@ class IdleMovement:
 
 class EnemyTrainer(Entity):
     classification: EnemyTrainerClassification
-    max_tiles: int | None
+    max_tiles: int
     _movement: IdleMovement
     warning_sign: Sprite
     detected: bool
@@ -36,7 +36,7 @@ class EnemyTrainer(Entity):
         y: float,
         game_manager: GameManager,
         classification: EnemyTrainerClassification = EnemyTrainerClassification.STATIONARY,
-        max_tiles: int | None = 2,
+        max_tiles: int = 2,
         facing: Direction | None = None,
     ) -> None:
         super().__init__(x, y, game_manager)
@@ -92,33 +92,33 @@ class EnemyTrainer(Entity):
         size = GameSettings.TILE_SIZE
 
         # checkpoint 2
-        # LOS panjangnya 3 tiles & lebar 1 tile dari posisi enemy trainer ke atas kiri kanan bawah
+        # LOS panjangnya max_tiles & lebar 1 tile dari posisi enemy trainer ke atas kiri kanan bawah
         if self.los_direction == Direction.UP:
             return pygame.Rect(
                 self.position.x,
-                self.position.y - size * 3,
+                self.position.y - size * self.max_tiles,
                 size,
-                size * 3
+                size * self.max_tiles
             )
         elif self.los_direction == Direction.DOWN:
             return pygame.Rect(
                 self.position.x,
                 self.position.y + size,
                 size,
-                size * 3
+                size * self.max_tiles
             )
         elif self.los_direction == Direction.LEFT:
             return pygame.Rect(
-                self.position.x - size * 3,
+                self.position.x - size * self.max_tiles,
                 self.position.y,
-                size * 3,
+                size * self.max_tiles,
                 size
             )
         elif self.los_direction == Direction.RIGHT:
             return pygame.Rect(
                 self.position.x + size,
                 self.position.y,
-                size * 3,
+                size * self.max_tiles,
                 size
             )
         return None
