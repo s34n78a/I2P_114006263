@@ -79,74 +79,26 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 19.62030548901144,
-    "y": 28.936249783362054
+    "x": 12.84356450708949,
+    "y": 29.200990765284004
   },
   "bag": {
     "monsters": [
-      {
-        "name": "Pikachu",
-        "hp": 85,
-        "max_hp": 100,
-        "level": 25,
-        "sprite_path": "menu_sprites/menusprite1.png"
-      },
-      {
-        "name": "Charizard",
-        "hp": 150,
-        "max_hp": 200,
-        "level": 36,
-        "sprite_path": "menu_sprites/menusprite2.png"
-      },
-      {
-        "name": "Blastoise",
-        "hp": 120,
-        "max_hp": 180,
-        "level": 32,
-        "sprite_path": "menu_sprites/menusprite3.png"
-      },
-      {
-        "name": "Venusaur",
-        "hp": 90,
-        "max_hp": 160,
-        "level": 30,
-        "sprite_path": "menu_sprites/menusprite4.png"
-      },
-      {
-        "name": "Gengar",
-        "hp": 110,
-        "max_hp": 140,
-        "level": 28,
-        "sprite_path": "menu_sprites/menusprite5.png"
-      },
-      {
-        "name": "Dragonite",
-        "hp": 180,
-        "max_hp": 220,
-        "level": 40,
-        "sprite_path": "menu_sprites/menusprite6.png"
-      }
+      { "name": "Pikachu",   "hp": 85,  "max_hp": 100, "level": 25, "sprite_path": "menu_sprites/menusprite1.png" },
+      { "name": "Charizard", "hp": 150, "max_hp": 200, "level": 36, "sprite_path": "menu_sprites/menusprite2.png" },
+      { "name": "Blastoise", "hp": 120, "max_hp": 180, "level": 32, "sprite_path": "menu_sprites/menusprite3.png" },
+      { "name": "Venusaur",  "hp": 90,  "max_hp": 160, "level": 30, "sprite_path": "menu_sprites/menusprite4.png" },
+      { "name": "Gengar",    "hp": 110, "max_hp": 140, "level": 28, "sprite_path": "menu_sprites/menusprite5.png" },
+      { "name": "Dragonite", "hp": 180, "max_hp": 220, "level": 40, "sprite_path": "menu_sprites/menusprite6.png" }
     ],
     "items": [
-      {
-        "name": "Potion",
-        "count": 5,
-        "sprite_path": "ingame_ui/potion.png"
-      },
-      {
-        "name": "Coins",
-        "count": 3,
-        "sprite_path": "ingame_ui/coin.png"
-      },
-      {
-        "name": "Pokeball",
-        "count": 10,
-        "sprite_path": "ingame_ui/ball.png"
-      }
+      { "name": "Potion",      "count": 5,  "sprite_path": "ingame_ui/potion.png" },
+      { "name": "Coins",       "count": 3,  "sprite_path": "ingame_ui/coin.png" },
+      { "name": "Pokeball",    "count": 10, "sprite_path": "ingame_ui/ball.png" }
     ]
   },
   "audio": {
-    "volume": 0.335,
-    "mute": true
+    "volume": 0.655,
+    "mute": false
   }
 }

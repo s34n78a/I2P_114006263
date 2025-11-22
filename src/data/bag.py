@@ -39,3 +39,11 @@ class Bag:
     @property
     def items(self) -> list[Item]:
         return self._items_data
+    
+    def use_item(self, item_name: str) -> bool:
+        # ngurangin 1 item kalau used, return True kalau berhasil
+        for item in self._items_data:
+            if item["name"] == item_name and item.get("count", 0) > 0:
+                item["count"] -= 1
+                return True
+        return False

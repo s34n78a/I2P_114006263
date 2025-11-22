@@ -53,4 +53,9 @@ class SceneManager:
             
         # Clear the transition request
         self._next_scene = None
+
+    @property
+    def current_scene(self) -> Scene | None:
+        return self._current_scene
+
         

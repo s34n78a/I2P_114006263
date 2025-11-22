@@ -28,6 +28,7 @@ class Map:
         self._render_all_layers(self._surface)
         # Prebake the collision map
         self._collision_map = self._create_collision_map()
+        self._bush_tiles = self._create_bush_map() # checkpoint 2
 
     def update(self, dt: float):
         return
@@ -48,6 +49,18 @@ class Map:
         '''
         for collision_rect in self._collision_map:
             if rect.colliderect(collision_rect):
+                return True
+        return False
+    
+    def check_bush(self, pos: Position) -> bool: # checkpoint 2
+        player_rect = pg.Rect(
+            pos.x,
+            pos.y,
+            GameSettings.TILE_SIZE,
+            GameSettings.TILE_SIZE
+        )
+        for b in self._bush_tiles:
+            if player_rect.colliderect(b):
                 return True
         return False
         
@@ -117,6 +130,22 @@ class Map:
                         )
                     )
         return rects
+    
+    def _create_bush_map(self) -> list[pg.Rect]: # checkpoint 2
+        bush_rects = []
+        for layer in self.tmxdata.visible_layers:
+            if isinstance(layer, pytmx.TiledTileLayer) and ("bush" in layer.name.lower()):
+                for x, y, gid in layer:
+                    if gid != 0:
+                        bush_rects.append(
+                            pg.Rect(
+                                x * GameSettings.TILE_SIZE,
+                                y * GameSettings.TILE_SIZE,
+                                GameSettings.TILE_SIZE,
+                                GameSettings.TILE_SIZE,
+                            )
+                        )
+        return bush_rects
 
     @classmethod
     def from_dict(cls, data: dict) -> "Map":

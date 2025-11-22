@@ -1,7 +1,10 @@
 from __future__ import annotations
 import pygame as pg
+
+#from src.core.managers import scene_manager
+#from src.core.managers.scene_manager import SceneManager
 from .entity import Entity
-from src.core.services import input_manager
+from src.core.services import input_manager, scene_manager
 from src.utils import Position, PositionCamera, GameSettings, Logger
 from src.core import GameManager
 import math
@@ -113,6 +116,19 @@ class Player(Entity):
         else:
             # player keluar dari teleporter → reset
             self.in_teleport = False
+
+        # Wild bush (check point 2)
+        #scene_manager = SceneManager()
+        if self.game_manager.current_map.check_bush(self.position):
+            # prevent retrigger spam by storing last bush tile
+            if not getattr(self, "_in_bush", False):
+                self._in_bush = True
+                from src.scenes.battle_scene import BattleScene
+                BattleScene.prepare_wild(game_manager=self.game_manager)
+                scene_manager.change_scene("battle")
+        else:
+            self._in_bush = False
+
 
         super().update(dt)
 
