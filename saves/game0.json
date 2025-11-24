@@ -7,6 +7,11 @@
           "x": 24,
           "y": 23,
           "destination": "gym.tmx"
+        },
+        {
+          "x": 16,
+          "y": 28,
+          "destination": "home.tmx"
         }
       ],
       "player": {
@@ -75,12 +80,32 @@
         "y": 12.0
       },
       "enemy_trainers": []
+    },
+    {
+      "path": "home.tmx",
+      "teleport": [
+        {
+          "x": 8,
+          "y": 15,
+          "destination": "map.tmx"
+        },
+        {
+          "x": 9,
+          "y": 15,
+          "destination": "map.tmx"
+        }
+      ],
+      "player": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "enemy_trainers": []
     }
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 16.73095902573069,
-    "y": 29.378421504914098
+    "x": 16.10779898987322,
+    "y": 30.967620633260513
   },
   "bag": {
     "monsters": [
