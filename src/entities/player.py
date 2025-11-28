@@ -19,13 +19,22 @@ class Player(Entity):
         self.last_teleport_pos = None # biar ga teleport terus
         self.in_teleport = False
 
-
     # cek collision sama enemy trainers lain
     def check_collision_with_enemies(self, rect:pg.Rect) -> bool:
         for enemy in self.game_manager.current_enemy_trainers:
             enemy_rect = pg.Rect(enemy.position.x, enemy.position.y,
                                 GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
             if rect.colliderect(enemy_rect):
+                return True
+        return False
+
+    # checkpoint 3
+    # cek collision sama shop keepers lain
+    def check_collision_with_shop_keepers(self, rect:pg.Rect) -> bool:
+        for shop_keeper in self.game_manager.current_shop_keepers:
+            shop_keeper_rect = pg.Rect(shop_keeper.position.x, shop_keeper.position.y,
+                                GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+            if rect.colliderect(shop_keeper_rect):
                 return True
         return False
 
@@ -85,7 +94,7 @@ class Player(Entity):
 
         # geser X
         rect.x += move_x
-        if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect):
+        if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect) and not self.check_collision_with_shop_keepers(rect):
             self.position.x += move_x
         else:
             # Snap to grid biar ga overlap
@@ -96,7 +105,7 @@ class Player(Entity):
 
         # geser Y
         rect.y += move_y
-        if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect):
+        if not self.game_manager.current_map.check_collision(rect) and not self.check_collision_with_enemies(rect) and not self.check_collision_with_shop_keepers(rect):
             self.position.y += move_y
         else:
             if move_y > 0:

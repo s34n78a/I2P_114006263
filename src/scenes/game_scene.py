@@ -63,6 +63,9 @@ class GameScene(Scene):
         # bikin overlay untuk backpack
         self.backpack_overlay = OverlayPanel(x, y, w+20, h+20, background_image=self.overlay_bg)
 
+        # bikin overlay untuk shop
+        self.shop_overlay = OverlayPanel(x, y, w+20, h+20, background_image=self.overlay_bg)
+
         # Button buat buka overlay setting
         self.setting_button = Button(
             "UI/button_setting.png",
@@ -106,6 +109,17 @@ class GameScene(Scene):
             on_click=self.close_backpack_overlay
         )
         self.backpack_overlay.add_child(self.button_x_backpack)
+
+        # Close button buat overlay shop
+        self.button_x_shop = Button(
+            "UI/button_x.png", "UI/button_x_hover.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) + 200,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 210,
+            width=40,
+            height=40,
+            on_click=self.close_shop_overlay
+        )
+        self.shop_overlay.add_child(self.button_x_shop)
 
         # Save Button
         self.button_save = Button(
@@ -152,10 +166,11 @@ class GameScene(Scene):
 
         self.show_setting_overlay = False
         self.show_backpack_overlay = False
+        self.show_shop_overlay = False
 
         # Backpack list layout (buat ngegambar, 2 kolom)
         self.monster_column_x = 400
-        self.item_column_x = GameSettings.SCREEN_WIDTH // 2 + 80
+        self.item_column_x = GameSettings.SCREEN_WIDTH // 2 + 60
         self.list_top_y = 220
         self.list_spacing = 60
         self._sprite_cache = {}
@@ -196,9 +211,15 @@ class GameScene(Scene):
             
             return # biar player ga bisa gerak di belakang overlay
         
-        # Update overlay button kalau overlay backpack dibuka
+        # Update overlay kalau overlay backpack dibuka
         if self.show_backpack_overlay:
             self.backpack_overlay.update(dt)
+            return # biar player ga bisa gerak di belakang overlay
+        
+        # checkpoint 3
+        # Update overlay kalau overlay shop dibuka
+        if self.show_shop_overlay:
+            self.shop_overlay.update(dt)
             return # biar player ga bisa gerak di belakang overlay
 
         # Update player dan enemy
@@ -206,6 +227,10 @@ class GameScene(Scene):
             self.game_manager.player.update(dt)
         for enemy in self.game_manager.current_enemy_trainers:
             enemy.update(dt)
+
+        # Update shop keepers (checkpoint 3)
+        for shop_keeper in self.game_manager.current_shop_keepers:
+            shop_keeper.update(dt)
             
         # Update others
         self.game_manager.bag.update(dt)
@@ -230,6 +255,10 @@ class GameScene(Scene):
         self.show_backpack_overlay = True
         self.backpack_overlay.show()
 
+    def open_shop_overlay(self):
+        self.show_shop_overlay = True
+        self.shop_overlay.show()
+
     def close_setting_overlay(self):
         self.show_setting_overlay = False
         self.setting_overlay.hide()
@@ -241,6 +270,10 @@ class GameScene(Scene):
     def close_backpack_overlay(self):
         self.show_backpack_overlay = False
         self.backpack_overlay.hide()
+
+    def close_shop_overlay(self):
+        self.show_shop_overlay = False
+        self.shop_overlay.hide()
 
     @override
     def draw(self, screen: pg.Surface):        
@@ -259,8 +292,12 @@ class GameScene(Scene):
         else:
             camera = PositionCamera(0, 0)
             self.game_manager.current_map.draw(screen, camera)
+
         for enemy in self.game_manager.current_enemy_trainers:
             enemy.draw(screen, camera)
+
+        for shop_keeper in self.game_manager.current_shop_keepers: # checkpoint 3
+            shop_keeper.draw(screen, camera)
 
         self.game_manager.bag.draw(screen)
         
@@ -300,6 +337,21 @@ class GameScene(Scene):
             # judul backpack
             title_text = title_font.render("Backpack", False, (0, 0, 0))
             title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 160, GameSettings.SCREEN_HEIGHT // 2 - 170))
+            screen.blit(title_text, title_rect)
+
+            # gambar list monster
+            self.draw_monster_list(screen)
+
+            # gambar list item
+            self.draw_item_list(screen)
+
+        # bikin layar overlay shop kalo dibuka (checkpoint 3)
+        elif self.show_shop_overlay:
+            self.shop_overlay.draw(screen)
+
+            # judul shop
+            title_text = title_font.render("Shop", False, (0, 0, 0))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 200, GameSettings.SCREEN_HEIGHT // 2 - 190))
             screen.blit(title_text, title_rect)
 
             # gambar list monster
@@ -384,7 +436,6 @@ class GameScene(Scene):
                 print("[FAILED TO LOAD SPRITE]", full_path, "error:", e)
             return None
 
-
     def draw_monster_list(self, screen):
         monsters, _ = self._get_bag_lists()
 
@@ -398,7 +449,7 @@ class GameScene(Scene):
             return
         
         # load mini banner once
-        mini_banner = self._load_cached_sprite("UI/raw/UI_Flat_Banner03a.png", (240, 50))
+        mini_banner = self._load_cached_sprite("UI/raw/UI_Flat_Banner03a.png", (200, 50))
 
         for m in monsters:
             if isinstance(m, dict): # takutnya bukan dict

@@ -8,12 +8,14 @@ if TYPE_CHECKING:
     from src.maps.map import Map
     from src.entities.player import Player
     from src.entities.enemy_trainer import EnemyTrainer
+    from src.entities.shop import ShopKeeper # checkpoint 3
     from src.data.bag import Bag
 
 class GameManager:
     # Entities
     player: Player | None
     enemy_trainers: dict[str, list[EnemyTrainer]]
+    shop_keepers: dict[str, list[ShopKeeper]] # checkpoint 3
     bag: "Bag"
     
     # Map properties
@@ -27,6 +29,7 @@ class GameManager:
     def __init__(self, maps: dict[str, Map], start_map: str,
                  player: Player | None,
                  enemy_trainers: dict[str, list[EnemyTrainer]],
+                 shop_keepers: dict[str, list[ShopKeeper]], # checkpoint 3
                  bag: Bag | None = None):
         
         from src.data.bag import Bag
@@ -38,6 +41,7 @@ class GameManager:
 
         self.player = player
         self.enemy_trainers = enemy_trainers
+        self.shop_keepers = shop_keepers # checkpoint 3
         self.bag = bag if bag is not None else Bag([], [])
 
         # buat debugging
@@ -54,6 +58,10 @@ class GameManager:
         for key in self.maps.keys():
             self.enemy_trainers.setdefault(key, [])
 
+        # Pastiin shop keepers list ada utk tiap map
+        for key in self.maps.keys():
+            self.shop_keepers.setdefault(key, []) # checkpoint 3
+
     @property
     def current_map(self) -> Map:
         return self.maps[self.current_map_key]
@@ -61,6 +69,11 @@ class GameManager:
     @property
     def current_enemy_trainers(self) -> list[EnemyTrainer]:
         return self.enemy_trainers[self.current_map_key]
+    
+    # checkpoint 3
+    @property
+    def current_shop_keepers(self) -> list[ShopKeeper]:
+        return self.shop_keepers[self.current_map_key]
 
     @property
     def current_teleporter(self) -> list[Teleport]:
@@ -123,6 +136,10 @@ class GameManager:
         for entity in self.current_enemy_trainers:
             if rect.colliderect(entity.animation.rect):
                 return True
+            
+        for entity in self.current_shop_keepers: # checkpoint 3
+            if rect.colliderect(entity.animation.rect):
+                return True
 
         return False
     
@@ -153,6 +170,10 @@ class GameManager:
 
             # Save trainers for this map
             block["enemy_trainers"] = [t.to_dict() for t in self.enemy_trainers.get(key, [])]
+
+            # Save shop keepers for this map (checkpoint 3)
+            block["shop_keepers"] = [s.to_dict() for s in self.shop_keepers.get(key, [])]
+
             #spawn = self.player_spawns.get(key)
             #if spawn: # Simpen posisi spawn player di map ini, dicek pake if biar ga error
             #    block["player"] = {
@@ -180,11 +201,13 @@ class GameManager:
         from src.maps.map import Map
         from src.entities.player import Player
         from src.entities.enemy_trainer import EnemyTrainer
+        from src.entities.shop import ShopKeeper # checkpoint 3
         from src.data.bag import Bag
 
         Logger.info("Loading maps")
         maps: dict[str, Map] = {}
         trainers: dict[str, list[EnemyTrainer]] = {}
+        shop_keepers: dict[str, list[ShopKeeper]] = {} # checkpoint 3
         player_spawns: dict[str, Position] = {}
 
         for entry in data["map"]:
@@ -203,6 +226,7 @@ class GameManager:
             current_map,
             None, # Player
             trainers,
+            shop_keepers, # checkpoint 3
             bag=None
         )
         gm.player_spawns = player_spawns
@@ -215,6 +239,15 @@ class GameManager:
         # Pastiin semua maps punya trainer list (benerin KeyError)
         for key in gm.maps.keys():
             gm.enemy_trainers.setdefault(key, [])
+
+        # checkpoint 3
+        Logger.info("Loading shop keepers")
+        for m in data["map"]:
+            raw_data = m.get("shop_keepers", [])
+            gm.shop_keepers[m["path"]] = [ShopKeeper.from_dict(s, gm) for s in raw_data]
+        # Pastiin semua maps punya shop keeper list (benerin KeyError)
+        for key in gm.maps.keys():
+            gm.shop_keepers.setdefault(key, []) # checkpoint 3
 
         Logger.info("Loading Player")
         if data.get("player"):

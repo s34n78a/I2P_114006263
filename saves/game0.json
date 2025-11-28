@@ -54,6 +54,15 @@
           "facing": "UP",
           "max_tiles": 2
         }
+      ],
+      "shop_keepers": [
+        {
+          "x": 19.0,
+          "y": 29.0,
+          "classification": "stationary",
+          "facing": "LEFT",
+          "max_tiles": 2
+        }
       ]
     },
     {
@@ -79,7 +88,8 @@
         "x": 12.0,
         "y": 12.0
       },
-      "enemy_trainers": []
+      "enemy_trainers": [],
+      "shop_keepers": []
     },
     {
       "path": "home.tmx",
@@ -99,13 +109,14 @@
         "x": 0.0,
         "y": 0.0
       },
-      "enemy_trainers": []
+      "enemy_trainers": [],
+      "shop_keepers": []
     }
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 16.10779898987322,
-    "y": 30.967620633260513
+    "x": 15.25179898987323,
+    "y": 29.559620633260515
   },
   "bag": {
     "monsters": [
@@ -154,7 +165,17 @@
     ],
     "items": [
       {
-        "name": "Potion",
+        "name": "Health Potion",
+        "count": 5,
+        "sprite_path": "ingame_ui/potion.png"
+      },
+      {
+        "name": "Strength Potion",
+        "count": 5,
+        "sprite_path": "ingame_ui/potion.png"
+      },
+      {
+        "name": "Defense Potion",
         "count": 5,
         "sprite_path": "ingame_ui/potion.png"
       },
