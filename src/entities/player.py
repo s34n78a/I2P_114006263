@@ -19,6 +19,10 @@ class Player(Entity):
         self.last_teleport_pos = None # biar ga teleport terus
         self.in_teleport = False
 
+        # checkpoint 3
+        self.auto_path = None
+        self.auto_speed = 4.0 * GameSettings.TILE_SIZE
+
     # cek collision sama enemy trainers lain
     def check_collision_with_enemies(self, rect:pg.Rect) -> bool:
         for enemy in self.game_manager.current_enemy_trainers:
@@ -67,14 +71,96 @@ class Player(Entity):
         self.position = ...
         '''
         
-        if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
-            dis.x -= 1
-        if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
-            dis.x += 1
-        if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
-            dis.y -= 1
-        if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
-            dis.y += 1
+        if self.auto_path: # checkpoint 3
+            # calculate movement direction for this frame
+            #self._auto_move_step(dt)
+
+            # override WASD
+            #dis = Position(self._auto_dx, self._auto_dy)
+
+            if self.auto_path:
+                next_tx, next_ty = self.auto_path[0]
+
+                target_px = next_tx * GameSettings.TILE_SIZE
+                target_py = next_ty * GameSettings.TILE_SIZE
+
+                dx = target_px - self.position.x
+                dy = target_py - self.position.y
+
+                #dis = Position(dx* self.auto_speed * dt, dy* self.auto_speed * dt)
+
+                # If close → snap
+                close_enough = self.auto_speed / GameSettings.TILE_SIZE
+                if abs(dx) < close_enough and abs(dy) < close_enough:
+                    self.position.x = target_px
+                    self.position.y = target_py
+                    self.auto_path.pop(0)
+
+                    if not self.auto_path:
+                        self.auto_path = None
+
+                    # IMPORTANT: give no direction after snapping
+                    dis = Position(0, 0)
+                else:
+                    # NORMALIZED direction → this is the "WASD" replacement
+                    dist = math.hypot(dx, dy)
+                    dis = Position(dx / dist, dy / dist)
+
+                
+                # Move horizontally first (only if not aligned)
+                # if abs(self.position.x - target_px) > 1:
+                #     direction = 1 if target_px > self.position.x else -1
+                #     new_x = self.position.x + direction * self.auto_speed * dt
+                    
+                #     # prevent overshoot
+                #     if (direction == 1 and new_x > target_px) or (direction == -1 and new_x < target_px):
+                #         new_x = target_px
+
+                #     # test collision
+                #     rect = pg.Rect(new_x, self.position.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+                #     if not self.game_manager.current_map.check_collision(rect):
+                #         self.position.x = new_x
+                #         #dis = Position(direction * self.auto_speed * dt, 0)
+                #         return  # stay in auto mode
+
+                # # Move vertically second
+                # if abs(self.position.y - target_py) > 1:
+                #     direction = 1 if target_py > self.position.y else -1
+                #     new_y = self.position.y + direction * self.auto_speed * dt
+
+                #     # prevent overshoot
+                #     if (direction == 1 and new_y > target_py) or (direction == -1 and new_y < target_py):
+                #         new_y = target_py
+
+                #     rect = pg.Rect(self.position.x, new_y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+                #     if not self.game_manager.current_map.check_collision(rect):
+                #         self.position.y = new_y
+                #         #dis = Position(0, direction * self.auto_speed * dt)
+                #         return  # stay in auto mode
+    
+                # # SNAP and go to next tile
+                # self.position.x = target_px
+                # self.position.y = target_py
+                # self.auto_path.pop(0)
+
+                # # finished entire path
+                # if not self.auto_path:
+                #     self.auto_path = None
+
+                # dis = Position(0, 0)
+
+        else:
+            # manual input
+            dis = Position(0, 0)
+            if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
+                dis.x -= 1
+            if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
+                dis.x += 1
+            if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
+                dis.y -= 1
+            if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
+                dis.y += 1
+
 
         length = math.hypot(dis.x, dis.y)
         if length != 0:
@@ -128,7 +214,7 @@ class Player(Entity):
 
         # Wild bush (check point 2)
         #scene_manager = SceneManager()
-        if self.game_manager.current_map.check_bush(self.position):
+        if self.game_manager.current_map.check_bush(self.position) and self.auto_path is None:
             # prevent retrigger spam by storing last bush tile
             if not getattr(self, "_in_bush", False):
                 self._in_bush = True
@@ -153,3 +239,46 @@ class Player(Entity):
     @override
     def from_dict(cls, data: dict[str, object], game_manager: GameManager) -> Player:
         return cls(data["x"] * GameSettings.TILE_SIZE, data["y"] * GameSettings.TILE_SIZE, game_manager)
+
+    # checkpoint 3
+    def set_auto_path(self, tile_path):
+        # auto walk mengikuti path tile list
+        self.auto_path = tile_path[1:]  # skip current tile 
+
+    def _auto_move_step(self, dt):
+        if not self.auto_path:
+            return
+
+        next_tx, next_ty = self.auto_path[0]
+
+        target_px = next_tx * GameSettings.TILE_SIZE
+        target_py = next_ty * GameSettings.TILE_SIZE
+
+        dx = target_px - self.position.x
+        dy = target_py - self.position.y
+
+        dist = math.hypot(dx, dy)
+        if dist < 0.5:
+            # Snap to tile
+            self.position.x = target_px
+            self.position.y = target_py
+            self.auto_path.pop(0)
+
+            if not self.auto_path:
+                self.auto_path = None
+
+            return
+
+        # Normalized movement
+        vx = (dx / dist) * self.auto_speed * dt
+        vy = (dy / dist) * self.auto_speed * dt
+
+        # Move without overriding manual collision
+        rect = pg.Rect(self.position.x + vx, self.position.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+        if not self.game_manager.current_map.check_collision(rect):
+            self.position.x += vx
+
+        rect = pg.Rect(self.position.x, self.position.y + vy, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+        if not self.game_manager.current_map.check_collision(rect):
+            self.position.y += vy
+

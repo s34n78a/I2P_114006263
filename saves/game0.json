@@ -106,8 +106,8 @@
         }
       ],
       "player": {
-        "x": 0.0,
-        "y": 0.0
+        "x": 8,
+        "y": 11
       },
       "enemy_trainers": [],
       "shop_keepers": []
@@ -158,5 +158,10 @@
   "audio": {
     "volume": 0.655,
     "mute": false
+  },
+  "navigation": {
+      "pending_map": null,
+      "pending_path": null,
+      "active": false
   }
 }

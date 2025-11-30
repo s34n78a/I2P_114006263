@@ -39,7 +39,10 @@ class OverlayPanel(UIComponent):
             return
 
         for child in self.children:
-            child.update(dt)
+            if isinstance(child, List):
+                continue
+            else:
+                child.update(dt)
 
     def draw(self, screen: pg.Surface) -> None:
         if not self.visible:
@@ -57,4 +60,7 @@ class OverlayPanel(UIComponent):
 
         # Gambar semua child element
         for child in self.children:
-            child.draw(screen)
+            if isinstance(child, List):
+                screen.blit(child[0], child[1])
+            else:
+                child.draw(screen)

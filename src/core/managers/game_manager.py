@@ -44,6 +44,13 @@ class GameManager:
         self.shop_keepers = shop_keepers # checkpoint 3
         self.bag = bag if bag is not None else Bag([], [])
 
+        # checkpoint 3
+        self.pending_navigation_map: str | None = None
+        self.pending_navigation_path: list[tuple[int, int]] = []
+        self.navigation_active: bool = False
+        self.pending_navigation_current: int = 0
+        self.pending_navigation_route: list[Teleport] | None = None
+
         # buat debugging
         #print("Loaded map keys:", list(self.maps.keys()))
 
@@ -98,10 +105,6 @@ class GameManager:
         #    self.next_map = ""
         #    self.should_change_scene = False
             
-            # biar teleport ga ke spawn terus [TO DO HACKATHON 6]
-            #if self.player:
-            #    self.player.position = self.maps[self.current_map_key].spawn
-
         if not self.should_change_scene:
             return
 
@@ -129,6 +132,28 @@ class GameManager:
 
             # set cooldown to prevent immediate retrigger
             self.teleport_cooldown = 15    # ~0.25s at 60 FPS
+
+        if self.pending_navigation_route:
+            route = self.pending_navigation_route
+            idx = self.pending_navigation_current
+
+            if idx < len(route):
+                tp = route[idx]
+                self.pending_navigation_current += 1
+
+                # Use teleporter
+                self.switch_map(tp.destination)
+                # Move player to spawn of that map
+                m = self.current_map
+                self.player.position = Position(m.spawn.x, m.spawn.y)
+
+                # Continue automatically on next update
+                return True
+
+            # Finished all teleporter transitions
+            del self.pending_navigation_route
+            del self.pending_navigation_current
+            return False
 
     def check_collision(self, rect: pg.Rect) -> bool:
         if self.current_map.check_collision(rect):
@@ -193,6 +218,14 @@ class GameManager:
             "audio": {
                 "volume": GameSettings.AUDIO_VOLUME,
                 "mute": GameSettings.MUTE
+            },
+            "navigation": {
+                "pending_map": self.pending_navigation_map,
+                "pending_path": self.pending_navigation_path,
+                "active": self.navigation_active,
+                "current": self.pending_navigation_current,
+                "route": [tp.to_dict() for tp in self.pending_navigation_route] 
+                        if self.pending_navigation_route else None
             }
         }
 
@@ -267,4 +300,18 @@ class GameManager:
         GameSettings.AUDIO_VOLUME = audio.get("volume", 0.5)
         GameSettings.MUTE = audio.get("mute", False)
 
+        # checkpoint 3
+        nav = data.get("navigation", {})
+        gm.pending_navigation_map = nav.get("pending_map")
+        gm.pending_navigation_path = nav.get("pending_path", [])
+        gm.navigation_active = nav.get("active", False)
+        gm.pending_navigation_current = nav.get("current", 0)
+
+        route_raw = nav.get("route")
+        if route_raw:
+            from src.utils import Teleport
+            gm.pending_navigation_route = [Teleport.from_dict(tp) for tp in route_raw]
+        else:
+            gm.pending_navigation_route = None
+            
         return gm

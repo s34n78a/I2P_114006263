@@ -1,7 +1,7 @@
 import pygame as pg
 import threading
 import time
-import os
+import json, os
 
 from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
@@ -12,6 +12,7 @@ from src.interface.components.overlay import OverlayPanel
 from src.interface.components import Button
 from src.interface.components.checkbox import Checkbox
 from src.interface.components.slider import Slider
+from src.pathfinding.bfs import bfs_pathfind
 from typing import override
 
 pg.init()
@@ -20,7 +21,7 @@ pg.init()
 pg.font.init()
 minecraft_font = pg.font.Font('assets/fonts/Minecraft.ttf', 20) # text size 20
 title_font = pg.font.Font('assets/fonts/Minecraft.ttf', 30) # text size 30
-in_bag_font = pg.font.Font('assets/fonts/Minecraft.ttf', 15) # text size 15
+text_overlay_font = pg.font.Font('assets/fonts/Minecraft.ttf', 15) # text size 15
 pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 class GameScene(Scene):
@@ -63,8 +64,11 @@ class GameScene(Scene):
         # bikin overlay untuk backpack
         self.backpack_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
 
-        # bikin overlay untuk shop
+        # bikin overlay untuk shop (checkpoint 3)
         self.shop_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
+
+        # bikin overlay untuk navigation (checkpoint 3)
+        self.navigation_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
 
         # Button buat buka overlay setting
         self.setting_button = Button(
@@ -88,6 +92,17 @@ class GameScene(Scene):
             on_click=self.open_backpack_overlay
         )
 
+        # Button buat buka navigation (checkpoint 3)
+        self.navigation_button = Button(
+            "UI/raw/UI_Flat_Button01a_4.png",
+            "UI/raw/UI_Flat_Button01a_1.png",
+            x=GameSettings.SCREEN_WIDTH - 205,
+            y=8,
+            width=100,
+            height=40,
+            on_click=self.open_navigation_overlay
+        )
+
         # Close button buat overlay setting
         self.button_x_setting = Button(
             "UI/button_x.png", "UI/button_x_hover.png",
@@ -103,23 +118,34 @@ class GameScene(Scene):
         self.button_x_backpack = Button(
             "UI/button_x.png", "UI/button_x_hover.png",
             x=(GameSettings.SCREEN_WIDTH // 2) + 200,
-            y=(GameSettings.SCREEN_HEIGHT // 2) - 190,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 210,
             width=40,
             height=40,
             on_click=self.close_backpack_overlay
         )
         self.backpack_overlay.add_child(self.button_x_backpack)
 
-        # Close button buat overlay shop
+        # Close button buat overlay shop (checkpoint 3)
         self.button_x_shop = Button(
             "UI/button_x.png", "UI/button_x_hover.png",
             x=(GameSettings.SCREEN_WIDTH // 2) + 200,
-            y=(GameSettings.SCREEN_HEIGHT // 2) - 210,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 230,
             width=40,
             height=40,
             on_click=self.close_shop_overlay
         )
         self.shop_overlay.add_child(self.button_x_shop)
+
+        # Close button buat overlay navigation (checkpoint 3)
+        self.button_x_navigation = Button(
+            "UI/button_x.png", "UI/button_x_hover.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) + 200,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 230,
+            width=40,
+            height=40,
+            on_click=self.close_navigation_overlay
+        )
+        self.navigation_overlay.add_child(self.button_x_navigation)
 
         # Save Button
         self.button_save = Button(
@@ -150,7 +176,7 @@ class GameScene(Scene):
             img_path="UI/button_shop.png",
             img_hovered_path="UI/button_shop_hover.png",
             x=(GameSettings.SCREEN_WIDTH // 2 - 150),
-            y=(GameSettings.SCREEN_HEIGHT // 2 + 220),
+            y=(GameSettings.SCREEN_HEIGHT // 2 + 200),
             width=45, height=45,
             on_click=self.sell_selected_monster
         )
@@ -160,8 +186,8 @@ class GameScene(Scene):
         self.button_buy = Button(
             img_path="UI/button_shop.png",
             img_hovered_path="UI/button_shop_hover.png",
-            x=(GameSettings.SCREEN_WIDTH // 2 + 100),
-            y=(GameSettings.SCREEN_HEIGHT // 2 + 220),
+            x=(GameSettings.SCREEN_WIDTH // 2 + 150),
+            y=(GameSettings.SCREEN_HEIGHT // 2 + 200),
             width=45, height=45,
             on_click=self.buy_selected_item
         )
@@ -189,17 +215,20 @@ class GameScene(Scene):
         self.show_setting_overlay = False
         self.show_backpack_overlay = False
         self.show_shop_overlay = False
+        self.show_navigation_overlay = False
 
         # Backpack list layout (buat ngegambar, 2 kolom)
         self.monster_column_x = 400
         self.item_column_x = GameSettings.SCREEN_WIDTH // 2 + 40
-        self.list_top_y = 220
+        self.list_top_y = 200
         self.list_spacing = 60
         self._sprite_cache = {}
 
         # checkpoint 3
         self.selected_monster_index = None
         self.selected_item_index = None
+
+        self.navigation_buttons = []
 
     @override
     def enter(self) -> None:
@@ -217,11 +246,36 @@ class GameScene(Scene):
         # Cek ada next scene ga
         self.game_manager.try_switch_map()
 
+        # checkpoint 3
+        if self.game_manager.pending_navigation_map is not None and self.game_manager.player is not None:
+            target = self.game_manager.pending_navigation_target
+            
+            if target and self.game_manager.current_map.path_name.endswith(target):
+                
+                del self.game_manager.pending_navigation_target
+
+                # auto-navigate inside new map
+                player = self.game_manager.player
+                current_map = self.game_manager.current_map
+
+                start_tile = (player.position.x // GameSettings.TILE_SIZE,
+                            player.position.y // GameSettings.TILE_SIZE)
+                target_tile = (current_map.width // 2, current_map.height // 2)
+
+                path = bfs_path(current_map, start_tile, target_tile)
+
+                if path:
+                    player.set_auto_path(path)
+                else:
+                    Logger.warning("No BFS path after switching map.")
         # Update button setting
         self.setting_button.update(dt)
 
         # Update button backpack
         self.backpack_button.update(dt)
+
+        # Update button navigation (checkpoint 3)
+        self.navigation_button.update(dt)
 
         # Update overlay button kalau overlay setting dibuka
         if self.show_setting_overlay:
@@ -243,6 +297,12 @@ class GameScene(Scene):
         # Update overlay kalau overlay shop dibuka
         if self.show_shop_overlay:
             self.shop_overlay.update(dt)
+            return # biar player ga bisa gerak di belakang overlay
+        
+        # checkpoint 3
+        # Update overlay kalau overlay navigation dibuka
+        if self.show_navigation_overlay:
+            self.navigation_overlay.update(dt)
             return # biar player ga bisa gerak di belakang overlay
 
         # Update player dan enemy
@@ -267,6 +327,9 @@ class GameScene(Scene):
     
     # buka tutup overlay
     def open_setting_overlay(self):
+        if self.show_backpack_overlay or self.show_shop_overlay or self.show_navigation_overlay:
+            return
+
         self.show_setting_overlay = True
         self.setting_overlay.show()
         
@@ -275,12 +338,69 @@ class GameScene(Scene):
         self.checkbox_mute.checked = GameSettings.MUTE
 
     def open_backpack_overlay(self):
+        if self.show_setting_overlay or self.show_shop_overlay or self.show_navigation_overlay:
+            return
+
         self.show_backpack_overlay = True
         self.backpack_overlay.show()
 
+    # checkpoint 3
     def open_shop_overlay(self):
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay:
+            return
+
         self.show_shop_overlay = True
         self.shop_overlay.show()
+
+    def _pretty_map_name(self, filename: str) -> str:
+        base = os.path.basename(filename)
+        name, _ = os.path.splitext(base)
+        return name.capitalize()
+
+    def open_navigation_overlay(self):
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay:
+            return
+        
+        self.show_navigation_overlay = True
+        self.navigation_overlay.show()
+
+        # Clear existing buttons
+        self.navigation_overlay.children = []
+        self.navigation_overlay.add_child(self.button_x_navigation)
+
+        # read all maps in assets/maps
+        maps_folder = "assets/maps"
+        files = sorted(os.listdir(maps_folder))
+
+        bx = self.navigation_overlay.x + 40
+        by = self.navigation_overlay.y + 80
+        bw, bh = 300, 40
+
+        for map_key in self.game_manager.maps.keys():
+            label_text = self._pretty_map_name(map_key) + ' Spawn'
+            label = text_overlay_font.render(label_text, False, (0, 0, 0))
+            label_rect = label.get_rect(topleft=(bx + 10, by + 10))
+
+            def make_handler(target=map_key):
+                def handler():
+                    self.start_navigation_to_map(target)
+                return handler
+
+            btn = Button(
+                "UI/raw/UI_Flat_Button01a_4.png",
+                "UI/raw/UI_Flat_Button01a_1.png",
+                x=bx,
+                y=by,
+                width=bw,
+                height=bh,
+                on_click=make_handler()
+            )
+
+            self.navigation_overlay.add_child(btn)
+            self.navigation_overlay.add_child([label, label_rect])
+            self.navigation_buttons.append(btn)
+
+            by += bh + 12
 
     def close_setting_overlay(self):
         self.show_setting_overlay = False
@@ -297,6 +417,10 @@ class GameScene(Scene):
     def close_shop_overlay(self):
         self.show_shop_overlay = False
         self.shop_overlay.hide()
+
+    def close_navigation_overlay(self):
+        self.show_navigation_overlay = False
+        self.navigation_overlay.hide()
 
     @override
     def draw(self, screen: pg.Surface):        
@@ -339,6 +463,11 @@ class GameScene(Scene):
         # selalu bikin backpack button
         self.backpack_button.draw(screen)
 
+        # selalu bikin navigation button (checkpoint 3)
+        self.navigation_button.draw(screen)
+        navigation_label = minecraft_font.render("Nav List", False, (0, 0, 0))
+        screen.blit(navigation_label, (GameSettings.SCREEN_WIDTH - 195, 18))
+
         # Bikin layar overlay setting kalo dibuka
         if self.show_setting_overlay:
             self.setting_overlay.draw(screen)
@@ -359,7 +488,7 @@ class GameScene(Scene):
 
             # judul backpack
             title_text = title_font.render("Backpack", False, (0, 0, 0))
-            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 160, GameSettings.SCREEN_HEIGHT // 2 - 170))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 160, GameSettings.SCREEN_HEIGHT // 2 - 190))
             screen.blit(title_text, title_rect)
 
             # gambar list monster
@@ -374,7 +503,7 @@ class GameScene(Scene):
 
             # judul shop
             title_text = title_font.render("Shop", False, (0, 0, 0))
-            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 200, GameSettings.SCREEN_HEIGHT // 2 - 190))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 200, GameSettings.SCREEN_HEIGHT // 2 - 210))
             screen.blit(title_text, title_rect)
 
             # gambar list monster
@@ -382,6 +511,21 @@ class GameScene(Scene):
 
             # gambar list item
             self.draw_item_list(screen)
+
+            # label sell/buy
+            sell_label = text_overlay_font.render("Sell", False, (0, 0, 0))
+            screen.blit(sell_label, (GameSettings.SCREEN_WIDTH // 2 - 200, GameSettings.SCREEN_HEIGHT // 2 + 210))
+            buy_label = text_overlay_font.render("Buy", False, (0, 0, 0))
+            screen.blit(buy_label, (GameSettings.SCREEN_WIDTH // 2 + 100, GameSettings.SCREEN_HEIGHT // 2 + 210))
+
+        # bikin layar overlay navigation kalo dibuka (checkpoint 3)
+        elif self.show_navigation_overlay:
+            self.navigation_overlay.draw(screen)
+
+            # judul navigation
+            title_text = title_font.render("Navigation", False, (0, 0, 0))
+            title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 150, GameSettings.SCREEN_HEIGHT // 2 - 210))
+            screen.blit(title_text, title_rect)
 
     def _get_bag_lists(self):
         """
@@ -467,7 +611,7 @@ class GameScene(Scene):
 
         # kalau ga ada monster
         if not monsters:
-            hint = in_bag_font.render("(no monsters)", False, (100, 100, 100))
+            hint = text_overlay_font.render("(no monsters)", False, (100, 100, 100))
             screen.blit(hint, (x, y))
             return
         
@@ -497,11 +641,11 @@ class GameScene(Scene):
                 screen.blit(sprite, (x+10, y))
 
             # name + level
-            name_text = in_bag_font.render(f"{name}  Lv:{level}", False, (0, 0, 0))
+            name_text = text_overlay_font.render(f"{name}  Lv:{level}", False, (0, 0, 0))
             screen.blit(name_text, (x + 60, y + 5))
 
             # HP
-            hp_text = in_bag_font.render(f"HP: {hp}/{max_hp}", False, (0, 0, 0))
+            hp_text = text_overlay_font.render(f"HP: {hp}/{max_hp}", False, (0, 0, 0))
             screen.blit(hp_text, (x + 60, y + 25))
 
             # checkpoint 3
@@ -526,7 +670,7 @@ class GameScene(Scene):
 
         # kalau ga ada item
         if not items:
-            hint = in_bag_font.render("(no items)", False, (100, 100, 100))
+            hint = text_overlay_font.render("(no items)", False, (100, 100, 100))
             screen.blit(hint, (x, y))
             return
 
@@ -544,7 +688,7 @@ class GameScene(Scene):
             if sprite:
                 screen.blit(sprite, (x, y))
 
-            text = in_bag_font.render(f"{name} x{count}", False, (0, 0, 0))
+            text = text_overlay_font.render(f"{name} x{count}", False, (0, 0, 0))
             screen.blit(text, (x + 50, y + 10))
             y += self.list_spacing
 
@@ -559,6 +703,41 @@ class GameScene(Scene):
                 
                 if pg.mouse.get_pressed()[0]:  # left click
                     self.selected_item_index = items.index(it)
+
+    def save_game(self):
+        # Save game state
+        self.game_manager.save("saves/game0.json")
+        
+        # Save global settings kaya volume/mute
+        settings_data = {
+            "volume": GameSettings.AUDIO_VOLUME,
+            "mute": GameSettings.MUTE
+        }
+        with open("saves/settings.json", "w") as f:
+            import json
+            json.dump(settings_data, f, indent=2)
+        
+        Logger.info("Game and settings saved!")
+
+    def load_game(self):
+        # Load game state
+        manager = GameManager.load("saves/game0.json")
+        if manager:
+            self.game_manager = manager
+            Logger.info("Game loaded successfully!")
+        
+        # Load global settings
+        settings_path = "saves/settings.json"
+        if os.path.exists(settings_path):
+            with open(settings_path, "r") as f:
+                settings_data = json.load(f)
+            GameSettings.AUDIO_VOLUME = settings_data.get("volume", 0.5)
+            GameSettings.MUTE = settings_data.get("mute", False)
+            sound_manager.apply_settings()
+            # Update overlay UI sliders/checkbox
+            self.slider_volume.value = GameSettings.AUDIO_VOLUME
+            self.checkbox_mute.checked = GameSettings.MUTE
+            Logger.info("Settings loaded successfully!")
 
     # chekpoint 3
     def sell_selected_monster(self):
@@ -637,38 +816,138 @@ class GameScene(Scene):
 
         Logger.info("Bought 1 Potion for 20 coins!")
 
-    def save_game(self):
-        # Save game state
-        self.game_manager.save("saves/game0.json")
-        
-        # Save global settings kaya volume/mute
-        settings_data = {
-            "volume": GameSettings.AUDIO_VOLUME,
-            "mute": GameSettings.MUTE
-        }
-        with open("saves/settings.json", "w") as f:
-            import json
-            json.dump(settings_data, f, indent=2)
-        
-        Logger.info("Game and settings saved!")
+    def start_navigation_to_map(self, target_map: str):
+        gm = self.game_manager
+        player = gm.player
+        current_map = gm.current_map
 
-    def load_game(self):
-        # Load game state
-        manager = GameManager.load("saves/game0.json")
-        if manager:
-            self.game_manager = manager
-            Logger.info("Game loaded successfully!")
-        
-        # Load global settings
-        import json, os
-        settings_path = "saves/settings.json"
-        if os.path.exists(settings_path):
-            with open(settings_path, "r") as f:
-                settings_data = json.load(f)
-            GameSettings.AUDIO_VOLUME = settings_data.get("volume", 0.5)
-            GameSettings.MUTE = settings_data.get("mute", False)
-            sound_manager.apply_settings()
-            # Update overlay UI sliders/checkbox
-            self.slider_volume.value = GameSettings.AUDIO_VOLUME
-            self.checkbox_mute.checked = GameSettings.MUTE
-            Logger.info("Settings loaded successfully!")
+        start_tile = (player.position.x // GameSettings.TILE_SIZE,
+                    player.position.y // GameSettings.TILE_SIZE)
+
+
+        def is_blocked_tile(tx, ty):
+            # Convert tile to pixel space
+            px = tx * GameSettings.TILE_SIZE
+            py = ty * GameSettings.TILE_SIZE
+
+            rect = pg.Rect(px, py, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+
+            # solid collision tiles
+            if current_map.check_collision(rect):
+                return True
+
+            # bush
+            for b in current_map._bush_tiles:
+                if rect.colliderect(b):
+                    return True
+            # npc
+            if gm.check_collision(rect):
+                return True
+            
+            # teleporter
+            if current_map.path_name.endswith(target_map):
+                for tp in current_map.teleporters:
+                    tp_x, tp_y = tp.pos.x, tp.pos.y
+                    tp_rect = pg.Rect(tp_x, tp_y, GameSettings.TILE_SIZE*1.5, GameSettings.TILE_SIZE*1.5)
+                    if rect.colliderect(tp_rect):
+                        return True
+
+            return False
+
+
+        # if user already on that map → use BFS inside map
+        if current_map.path_name.endswith(target_map):
+            Logger.info(f"Navigating inside current map: {target_map}")
+            
+            current_map_spawn = gm.maps.get(target_map).spawn
+            if not current_map_spawn:
+                Logger.info(f"Target map {target_map} not found in game manager maps.")
+                self.close_navigation_overlay()
+                return
+
+            if current_map_spawn:
+                target_coord = current_map_spawn
+                Logger.info(f'Navigating to spawn point at position: {target_coord} in map: {target_map}')
+                target_tile = (target_coord.x // GameSettings.TILE_SIZE, 
+                               target_coord.y // GameSettings.TILE_SIZE)
+            else:
+                # fallback to player spawn (already in map)
+                Logger.info(f'Navigating to center spawn point of current map: {target_map}')
+                target_tile = (current_map.spawn.x // GameSettings.TILE_SIZE,
+                            current_map.spawn.y // GameSettings.TILE_SIZE)
+
+            path = bfs_pathfind(current_map, start_tile, target_tile, is_blocked_tile)
+
+            if path:
+                player.set_auto_path(path)
+            else:
+                Logger.warning("No BFS path found.")
+
+        else:
+            Logger.info(f"Computing teleporter route to: {target_map}")
+
+            start_map = current_map.path_name
+
+            route = self._find_map_route(start_map, target_map)
+
+            if not route:
+                Logger.warning(f"No teleporter route found from {start_map} to {target_map}")
+                self.close_navigation_overlay()
+                return
+
+            Logger.info(f"Teleporter route found: {len(route)} steps")
+
+            # store teleport route for GameManager to execute
+            gm.pending_navigation_route = route
+            gm.pending_navigation_current = 0  # index of next teleporter to use
+
+            self.close_navigation_overlay()
+
+        self.close_navigation_overlay()
+
+    def _build_teleporter_graph(self):
+        """
+        Returns a dict: map_name -> list of (destination_map, teleporter_object)
+        Example:
+        {
+        "pallet_town": [("route1", tp1)],
+        "route1": [("viridian", tp2), ("pallet_town", tp3)],
+        }
+        """
+        graph = {}
+
+        for map_name, game_map in self.game_manager.maps.items():
+            graph[map_name] = []
+            for tp in game_map.teleporters:
+                if tp.destination:  # destination map name string
+                    graph[map_name].append((tp.destination, tp))
+        return graph
+    
+    def _find_map_route(self, start_map: str, target_map: str):
+        """
+        Returns list of teleporter objects leading from start_map → target_map.
+        If already in target map, returns [].
+        """
+        if start_map == target_map:
+            return []
+
+        graph = self._build_teleporter_graph()
+
+        from collections import deque
+        q = deque([(start_map, [])])
+        visited = {start_map}
+
+        while q:
+            current, route = q.popleft()
+            for next_map, tp in graph.get(current, []):
+                if next_map in visited:
+                    continue
+                new_route = route + [tp]
+
+                if next_map == target_map:
+                    return new_route
+
+                visited.add(next_map)
+                q.append((next_map, new_route))
+
+        return None  # unreachable
