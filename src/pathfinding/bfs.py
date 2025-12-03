@@ -2,11 +2,6 @@
 from collections import deque
 
 def bfs_pathfind(current_map, start, goal, is_blocked):
-    """
-    start, goal: (tile_x, tile_y)
-    is_blocked: function(tile_x, tile_y) -> bool
-    Returns list of tiles representing the path, including start and goal.
-    """
     if start == goal:
         return [start]
 

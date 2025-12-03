@@ -243,31 +243,12 @@ class GameScene(Scene):
         
     @override
     def update(self, dt: float):
+        # checkpoint 3
+        self.game_manager.update_navigation()
+
         # Cek ada next scene ga
         self.game_manager.try_switch_map()
 
-        # checkpoint 3
-        if self.game_manager.pending_navigation_map is not None and self.game_manager.player is not None:
-            target = self.game_manager.pending_navigation_target
-            
-            if target and self.game_manager.current_map.path_name.endswith(target):
-                
-                del self.game_manager.pending_navigation_target
-
-                # auto-navigate inside new map
-                player = self.game_manager.player
-                current_map = self.game_manager.current_map
-
-                start_tile = (player.position.x // GameSettings.TILE_SIZE,
-                            player.position.y // GameSettings.TILE_SIZE)
-                target_tile = (current_map.width // 2, current_map.height // 2)
-
-                path = bfs_path(current_map, start_tile, target_tile)
-
-                if path:
-                    player.set_auto_path(path)
-                else:
-                    Logger.warning("No BFS path after switching map.")
         # Update button setting
         self.setting_button.update(dt)
 
@@ -352,11 +333,6 @@ class GameScene(Scene):
         self.show_shop_overlay = True
         self.shop_overlay.show()
 
-    def _pretty_map_name(self, filename: str) -> str:
-        base = os.path.basename(filename)
-        name, _ = os.path.splitext(base)
-        return name.capitalize()
-
     def open_navigation_overlay(self):
         if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay:
             return
@@ -364,26 +340,31 @@ class GameScene(Scene):
         self.show_navigation_overlay = True
         self.navigation_overlay.show()
 
-        # Clear existing buttons
+        # Clear tombol
         self.navigation_overlay.children = []
         self.navigation_overlay.add_child(self.button_x_navigation)
 
-        # read all maps in assets/maps
-        maps_folder = "assets/maps"
-        files = sorted(os.listdir(maps_folder))
+        gm = self.game_manager
+        current_map = gm.current_map
+        #Logger.info(f"Loading navigation destinations in {current_map.path_name} for overlay")
 
         bx = self.navigation_overlay.x + 40
         by = self.navigation_overlay.y + 80
         bw, bh = 300, 40
 
-        for map_key in self.game_manager.maps.keys():
-            label_text = self._pretty_map_name(map_key) + ' Spawn'
-            label = text_overlay_font.render(label_text, False, (0, 0, 0))
+        # Load destinations untuk *current* map
+        destinations = current_map.navigation_destinations
+        #Logger.info(f"Found {len(destinations)} navigation destinations")
+
+        for dest in destinations:
+            place_name = dest["place_name"]
+
+            label = text_overlay_font.render(place_name, False, (0, 0, 0))
             label_rect = label.get_rect(topleft=(bx + 10, by + 10))
 
-            def make_handler(target=map_key):
+            def make_handler(name=place_name):
                 def handler():
-                    self.start_navigation_to_map(target)
+                    self.start_navigation_to_place(name)
                 return handler
 
             btn = Button(
@@ -748,19 +729,22 @@ class GameScene(Scene):
             Logger.warning("No monster selected.")
             return
 
+        if len(monsters) == 1:
+            return # minimal 1 monster harus ada
+
         monster = monsters[idx]
 
-        # Example sell value = level * 10 coins
+        # Sell value = level * 10 coins
         level = monster["level"] if isinstance(monster, dict) else monster.level
         coins_earned = level * 10
 
-        # Remove monster
+        # Ilangin monster
         if isinstance(self.game_manager.bag.monsters, list):
             self.game_manager.bag.monsters.pop(idx)
         else:
             Logger.error("Bag monsters structure unexpected.")
 
-        # Add coins
+        # Tambah coins
         self.game_manager.bag.add_item("Coins", coins_earned, "ingame_ui/coin.png")
 
         Logger.info(f"Sold {monster['name']} for {coins_earned} coins!")
@@ -816,138 +800,10 @@ class GameScene(Scene):
 
         Logger.info("Bought 1 Potion for 20 coins!")
 
-    def start_navigation_to_map(self, target_map: str):
+    def start_navigation_to_place(self, place_name: str):
         gm = self.game_manager
-        player = gm.player
-        current_map = gm.current_map
+        #Logger.info(f"Start navigation to place {place_name} in {gm.current_map.path_name}")
 
-        start_tile = (player.position.x // GameSettings.TILE_SIZE,
-                    player.position.y // GameSettings.TILE_SIZE)
-
-
-        def is_blocked_tile(tx, ty):
-            # Convert tile to pixel space
-            px = tx * GameSettings.TILE_SIZE
-            py = ty * GameSettings.TILE_SIZE
-
-            rect = pg.Rect(px, py, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-
-            # solid collision tiles
-            if current_map.check_collision(rect):
-                return True
-
-            # bush
-            for b in current_map._bush_tiles:
-                if rect.colliderect(b):
-                    return True
-            # npc
-            if gm.check_collision(rect):
-                return True
-            
-            # teleporter
-            if current_map.path_name.endswith(target_map):
-                for tp in current_map.teleporters:
-                    tp_x, tp_y = tp.pos.x, tp.pos.y
-                    tp_rect = pg.Rect(tp_x, tp_y, GameSettings.TILE_SIZE*1.5, GameSettings.TILE_SIZE*1.5)
-                    if rect.colliderect(tp_rect):
-                        return True
-
-            return False
-
-
-        # if user already on that map → use BFS inside map
-        if current_map.path_name.endswith(target_map):
-            Logger.info(f"Navigating inside current map: {target_map}")
-            
-            current_map_spawn = gm.maps.get(target_map).spawn
-            if not current_map_spawn:
-                Logger.info(f"Target map {target_map} not found in game manager maps.")
-                self.close_navigation_overlay()
-                return
-
-            if current_map_spawn:
-                target_coord = current_map_spawn
-                Logger.info(f'Navigating to spawn point at position: {target_coord} in map: {target_map}')
-                target_tile = (target_coord.x // GameSettings.TILE_SIZE, 
-                               target_coord.y // GameSettings.TILE_SIZE)
-            else:
-                # fallback to player spawn (already in map)
-                Logger.info(f'Navigating to center spawn point of current map: {target_map}')
-                target_tile = (current_map.spawn.x // GameSettings.TILE_SIZE,
-                            current_map.spawn.y // GameSettings.TILE_SIZE)
-
-            path = bfs_pathfind(current_map, start_tile, target_tile, is_blocked_tile)
-
-            if path:
-                player.set_auto_path(path)
-            else:
-                Logger.warning("No BFS path found.")
-
-        else:
-            Logger.info(f"Computing teleporter route to: {target_map}")
-
-            start_map = current_map.path_name
-
-            route = self._find_map_route(start_map, target_map)
-
-            if not route:
-                Logger.warning(f"No teleporter route found from {start_map} to {target_map}")
-                self.close_navigation_overlay()
-                return
-
-            Logger.info(f"Teleporter route found: {len(route)} steps")
-
-            # store teleport route for GameManager to execute
-            gm.pending_navigation_route = route
-            gm.pending_navigation_current = 0  # index of next teleporter to use
-
-            self.close_navigation_overlay()
+        gm.navigate_to(place_name)
 
         self.close_navigation_overlay()
-
-    def _build_teleporter_graph(self):
-        """
-        Returns a dict: map_name -> list of (destination_map, teleporter_object)
-        Example:
-        {
-        "pallet_town": [("route1", tp1)],
-        "route1": [("viridian", tp2), ("pallet_town", tp3)],
-        }
-        """
-        graph = {}
-
-        for map_name, game_map in self.game_manager.maps.items():
-            graph[map_name] = []
-            for tp in game_map.teleporters:
-                if tp.destination:  # destination map name string
-                    graph[map_name].append((tp.destination, tp))
-        return graph
-    
-    def _find_map_route(self, start_map: str, target_map: str):
-        """
-        Returns list of teleporter objects leading from start_map → target_map.
-        If already in target map, returns [].
-        """
-        if start_map == target_map:
-            return []
-
-        graph = self._build_teleporter_graph()
-
-        from collections import deque
-        q = deque([(start_map, [])])
-        visited = {start_map}
-
-        while q:
-            current, route = q.popleft()
-            for next_map, tp in graph.get(current, []):
-                if next_map in visited:
-                    continue
-                new_route = route + [tp]
-
-                if next_map == target_map:
-                    return new_route
-
-                visited.add(next_map)
-                q.append((next_map, new_route))
-
-        return None  # unreachable

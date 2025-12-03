@@ -14,7 +14,10 @@ class Map:
     _surface: pg.Surface
     _collision_map: list[pg.Rect]
 
-    def __init__(self, path: str, tp: list[Teleport], spawn: Position):
+    # check point 3
+    navigation_destinations: list[dict]
+
+    def __init__(self, path: str, tp: list[Teleport], spawn: Position, navigation_destinations: list[dict] = []):
         self.path_name = path
         self.tmxdata = load_tmx(path)
         self.spawn = spawn
@@ -29,6 +32,9 @@ class Map:
         # Prebake the collision map
         self._collision_map = self._create_collision_map()
         self._bush_tiles = self._create_bush_map() # checkpoint 2
+
+        #checkpoint 3
+        self.navigation_destinations = navigation_destinations
 
     def update(self, dt: float):
         return
@@ -154,12 +160,16 @@ class Map:
     def from_dict(cls, data: dict) -> "Map":
         tp = [Teleport.from_dict(t) for t in data["teleport"]]
         pos = Position(data["player"]["x"] * GameSettings.TILE_SIZE, data["player"]["y"] * GameSettings.TILE_SIZE)
-        return cls(data["path"], tp, pos)
+        
+        nav = data.get("navigation_destinations", []) # checkpoint 3
+        
+        return cls(data["path"], tp, pos, nav)
 
     def to_dict(self):
         return {
             "path": self.path_name,
             "teleport": [t.to_dict() for t in self.teleporters],
+            "navigation_destinations": self.navigation_destinations, # checkpoint 3
             "player": {
                 "x": self.spawn.x // GameSettings.TILE_SIZE,
                 "y": self.spawn.y // GameSettings.TILE_SIZE,

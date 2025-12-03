@@ -72,82 +72,34 @@ class Player(Entity):
         '''
         
         if self.auto_path: # checkpoint 3
-            # calculate movement direction for this frame
-            #self._auto_move_step(dt)
+            next_tx, next_ty = self.auto_path[0]
 
-            # override WASD
-            #dis = Position(self._auto_dx, self._auto_dy)
+            target_px = next_tx * GameSettings.TILE_SIZE
+            target_py = next_ty * GameSettings.TILE_SIZE
 
-            if self.auto_path:
-                next_tx, next_ty = self.auto_path[0]
+            #Logger.info(f"Auto-moving to tile ({next_tx}, {next_ty}) at pixel ({target_px}, {target_py})")
 
-                target_px = next_tx * GameSettings.TILE_SIZE
-                target_py = next_ty * GameSettings.TILE_SIZE
+            dx = target_px - self.position.x
+            dy = target_py - self.position.y
 
-                dx = target_px - self.position.x
-                dy = target_py - self.position.y
+            #dis = Position(dx* self.auto_speed * dt, dy* self.auto_speed * dt)
 
-                #dis = Position(dx* self.auto_speed * dt, dy* self.auto_speed * dt)
+            # If close → snap
+            close_enough = self.auto_speed / GameSettings.TILE_SIZE
+            if abs(dx) < close_enough and abs(dy) < close_enough:
+                self.position.x = target_px
+                self.position.y = target_py
+                self.auto_path.pop(0)
 
-                # If close → snap
-                close_enough = self.auto_speed / GameSettings.TILE_SIZE
-                if abs(dx) < close_enough and abs(dy) < close_enough:
-                    self.position.x = target_px
-                    self.position.y = target_py
-                    self.auto_path.pop(0)
+                if not self.auto_path:
+                    self.auto_path = None
 
-                    if not self.auto_path:
-                        self.auto_path = None
-
-                    # IMPORTANT: give no direction after snapping
-                    dis = Position(0, 0)
-                else:
-                    # NORMALIZED direction → this is the "WASD" replacement
-                    dist = math.hypot(dx, dy)
-                    dis = Position(dx / dist, dy / dist)
-
-                
-                # Move horizontally first (only if not aligned)
-                # if abs(self.position.x - target_px) > 1:
-                #     direction = 1 if target_px > self.position.x else -1
-                #     new_x = self.position.x + direction * self.auto_speed * dt
-                    
-                #     # prevent overshoot
-                #     if (direction == 1 and new_x > target_px) or (direction == -1 and new_x < target_px):
-                #         new_x = target_px
-
-                #     # test collision
-                #     rect = pg.Rect(new_x, self.position.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-                #     if not self.game_manager.current_map.check_collision(rect):
-                #         self.position.x = new_x
-                #         #dis = Position(direction * self.auto_speed * dt, 0)
-                #         return  # stay in auto mode
-
-                # # Move vertically second
-                # if abs(self.position.y - target_py) > 1:
-                #     direction = 1 if target_py > self.position.y else -1
-                #     new_y = self.position.y + direction * self.auto_speed * dt
-
-                #     # prevent overshoot
-                #     if (direction == 1 and new_y > target_py) or (direction == -1 and new_y < target_py):
-                #         new_y = target_py
-
-                #     rect = pg.Rect(self.position.x, new_y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-                #     if not self.game_manager.current_map.check_collision(rect):
-                #         self.position.y = new_y
-                #         #dis = Position(0, direction * self.auto_speed * dt)
-                #         return  # stay in auto mode
-    
-                # # SNAP and go to next tile
-                # self.position.x = target_px
-                # self.position.y = target_py
-                # self.auto_path.pop(0)
-
-                # # finished entire path
-                # if not self.auto_path:
-                #     self.auto_path = None
-
-                # dis = Position(0, 0)
+                # IMPORTANT: give no direction after snapping
+                dis = Position(0, 0)
+            else:
+                # NORMALIZED direction → this is the "WASD" replacement
+                dist = math.hypot(dx, dy)
+                dis = Position(dx / dist, dy / dist)
 
         else:
             # manual input
@@ -202,7 +154,7 @@ class Player(Entity):
         # Cek teleportasi [hackathon 5]
         tp = self.game_manager.current_map.check_teleport(self.position)
         
-        if tp:
+        if tp and self.auto_path is None:
             if not self.in_teleport:  # player masuk
                 self.in_teleport = True
                 self.game_manager.previous_map_key = self.game_manager.current_map_key
@@ -253,6 +205,8 @@ class Player(Entity):
 
         target_px = next_tx * GameSettings.TILE_SIZE
         target_py = next_ty * GameSettings.TILE_SIZE
+
+        Logger.info(f"Auto-moving to tile ({next_tx}, {next_ty}) at pixel ({target_px}, {target_py})")
 
         dx = target_px - self.position.x
         dy = target_py - self.position.y

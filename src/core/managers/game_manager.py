@@ -1,4 +1,5 @@
 from __future__ import annotations
+from src.pathfinding.bfs import bfs_pathfind
 from src.utils import Logger, GameSettings, Position, Teleport
 import json, os
 import pygame as pg
@@ -46,10 +47,10 @@ class GameManager:
 
         # checkpoint 3
         self.pending_navigation_map: str | None = None
-        self.pending_navigation_path: list[tuple[int, int]] = []
+        self.pending_navigation_path: list[tuple[int, int]] | None = None
         self.navigation_active: bool = False
-        self.pending_navigation_current: int = 0
-        self.pending_navigation_route: list[Teleport] | None = None
+        # self.pending_navigation_current: int = 0
+        # self.pending_navigation_route: list | None = None
 
         # buat debugging
         #print("Loaded map keys:", list(self.maps.keys()))
@@ -61,12 +62,9 @@ class GameManager:
         # Player spawns (buat saving)
         self.player_spawns: dict[str, Position] = {}
 
-        # Pastiin trainers list ada utk tiap map
+        # Pastiin trainers & shopkeepers list ada utk tiap map
         for key in self.maps.keys():
             self.enemy_trainers.setdefault(key, [])
-
-        # Pastiin shop keepers list ada utk tiap map
-        for key in self.maps.keys():
             self.shop_keepers.setdefault(key, []) # checkpoint 3
 
     @property
@@ -94,6 +92,7 @@ class GameManager:
         self.next_map = target
         self.should_change_scene = True
         self.previous_map_key = self.current_map_key # Simpen map pas teleport [TO DO HACKATHON 6]
+        #self.current_map_key = target
 
     def try_switch_map(self) -> None:
         # reduce cooldown timer
@@ -111,6 +110,7 @@ class GameManager:
         # Switch
         old_map = self.current_map_key
         new_map = self.next_map
+        Logger.info(f"Switching map: {old_map} -> {new_map}")
         self.current_map_key = new_map
         self.next_map = ""
         self.should_change_scene = False
@@ -124,36 +124,16 @@ class GameManager:
 
         # Move player safely
         if self.player:
-            if return_tp:
+            if return_tp and not self.navigation_active and self.teleport_cooldown == 0:
+                Logger.info(f"Placing player at return teleporter {return_tp.pos} in {new_map}")
                 self.player.position = return_tp.pos.copy()
             else:
                 # safe fallback: map spawn
+                Logger.info(f"No return teleporter found; placing player at spawn in {new_map}")
                 self.player.position = self.maps[new_map].spawn.copy()
 
             # set cooldown to prevent immediate retrigger
             self.teleport_cooldown = 15    # ~0.25s at 60 FPS
-
-        if self.pending_navigation_route:
-            route = self.pending_navigation_route
-            idx = self.pending_navigation_current
-
-            if idx < len(route):
-                tp = route[idx]
-                self.pending_navigation_current += 1
-
-                # Use teleporter
-                self.switch_map(tp.destination)
-                # Move player to spawn of that map
-                m = self.current_map
-                self.player.position = Position(m.spawn.x, m.spawn.y)
-
-                # Continue automatically on next update
-                return True
-
-            # Finished all teleporter transitions
-            del self.pending_navigation_route
-            del self.pending_navigation_current
-            return False
 
     def check_collision(self, rect: pg.Rect) -> bool:
         if self.current_map.check_collision(rect):
@@ -168,6 +148,62 @@ class GameManager:
 
         return False
     
+    # checkpoint 3
+    def is_blocked_tile(self, tx, ty) -> bool:
+        px, py = tx * GameSettings.TILE_SIZE, ty * GameSettings.TILE_SIZE
+        rect = pg.Rect(px, py, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+        return self.current_map.check_collision(rect) or self.check_collision(rect)
+
+    def navigate_to(self, place_name: str) -> None:
+        self.pending_destination_name = place_name
+        self.navigation_active = True
+        Logger.info(f"Computing navigation to place {place_name} in {self.current_map.path_name}")
+        self.compute_navigation_path()
+
+    def compute_navigation_path(self) -> None:
+        if not self.navigation_active or not self.pending_destination_name:
+            Logger.info("Navigation inactive or no pending destination.")
+            return
+
+        destinations = getattr(self.current_map, "navigation_destinations", [])
+        dest = next((d for d in destinations if d["place_name"] == self.pending_destination_name), None)
+        if not dest:
+            Logger.warning(f"Navigation: destination '{self.pending_destination_name}' not found in current map.")
+            self.navigation_active = False
+            return
+
+        start_tile = (int(self.player.position.x // GameSettings.TILE_SIZE),
+                      int(self.player.position.y // GameSettings.TILE_SIZE))
+        dest_tile = (dest["x"], dest["y"])
+
+        if start_tile == dest_tile:
+            Logger.info(f"Navigation: already at destination '{self.pending_destination_name}'.")
+            self.navigation_active = False
+            return
+
+        Logger.info(f"Navigation: computing BFS from {start_tile} to {dest_tile}")
+        path = bfs_pathfind(self.current_map, start_tile, dest_tile, self.is_blocked_tile)
+        if path:
+            Logger.info(f"Navigation: BFS path computed (len={len(path)}). Starting auto-walk.")
+            self.pending_navigation_path = path
+            self.player.set_auto_path(path)
+        else:
+            Logger.warning("Navigation: path blocked. Cancelling navigation.")
+            self.navigation_active = False
+
+    def update_navigation(self) -> None:
+        if not self.navigation_active or not self.pending_destination_name:
+            return
+        if not self.pending_navigation_path or not self.player.auto_path:
+            self.compute_navigation_path()
+            return
+
+        if not self.player.auto_path:  # Reached destination
+            Logger.info(f"Navigation complete to {self.pending_destination_name}")
+            self.pending_navigation_path = None
+            self.pending_destination_name = None
+            self.navigation_active = False
+
     def save(self, path: str) -> None:
         try:
             with open(path, "w") as f:
@@ -199,15 +235,6 @@ class GameManager:
             # Save shop keepers for this map (checkpoint 3)
             block["shop_keepers"] = [s.to_dict() for s in self.shop_keepers.get(key, [])]
 
-            #spawn = self.player_spawns.get(key)
-            #if spawn: # Simpen posisi spawn player di map ini, dicek pake if biar ga error
-            #    block["player"] = {
-            #        "x": spawn.x / GameSettings.TILE_SIZE,
-            #        "y": spawn.y / GameSettings.TILE_SIZE
-            #    }
-            #else:
-            #    block["player"] = {"x": 0, "y": 0}
-
             map_blocks.append(block)
             
         return {
@@ -223,9 +250,11 @@ class GameManager:
                 "pending_map": self.pending_navigation_map,
                 "pending_path": self.pending_navigation_path,
                 "active": self.navigation_active,
-                "current": self.pending_navigation_current,
-                "route": [tp.to_dict() for tp in self.pending_navigation_route] 
-                        if self.pending_navigation_route else None
+                # "current": self.pending_navigation_current,
+                # "route": [( (m if isinstance(m, str) else None), tp.to_dict() ) 
+                #            if isinstance(tp, Teleport) else (None, tp.to_dict() if hasattr(tp, "to_dict") else None)
+                #            for tp in (self.pending_navigation_route or [])] 
+                #         if self.pending_navigation_route else None
             }
         }
 
@@ -278,6 +307,7 @@ class GameManager:
         for m in data["map"]:
             raw_data = m.get("shop_keepers", [])
             gm.shop_keepers[m["path"]] = [ShopKeeper.from_dict(s, gm) for s in raw_data]
+        
         # Pastiin semua maps punya shop keeper list (benerin KeyError)
         for key in gm.maps.keys():
             gm.shop_keepers.setdefault(key, []) # checkpoint 3
@@ -289,11 +319,6 @@ class GameManager:
         Logger.info("Loading bag")
         from src.data.bag import Bag as _Bag
         gm.bag = Bag.from_dict(data.get("bag", {})) if data.get("bag") else _Bag([], [])
-        # opsi bag
-        #if data.get("bag"):
-        #    gm.bag = Bag.from_dict(data["bag"])
-        #else:
-        #    gm.bag = Bag([], [])
 
         # Load audio
         audio = data.get("audio", {})
@@ -305,13 +330,5 @@ class GameManager:
         gm.pending_navigation_map = nav.get("pending_map")
         gm.pending_navigation_path = nav.get("pending_path", [])
         gm.navigation_active = nav.get("active", False)
-        gm.pending_navigation_current = nav.get("current", 0)
-
-        route_raw = nav.get("route")
-        if route_raw:
-            from src.utils import Teleport
-            gm.pending_navigation_route = [Teleport.from_dict(tp) for tp in route_raw]
-        else:
-            gm.pending_navigation_route = None
             
         return gm

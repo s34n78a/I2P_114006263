@@ -12,7 +12,28 @@
       ],
       "teleport": [
         { "x": 24, "y": 23, "destination": "gym.tmx" },
-        {"x": 16, "y": 28, "destination": "home.tmx"
+        {"x": 16, "y": 28, "destination": "home.tmx"}
+      ],
+      "navigation_destinations": [
+        {
+          "place_name": "Gym",
+          "x": 24,
+          "y": 24
+        },
+        {
+          "place_name": "Home",
+          "x": 16,
+          "y": 29
+        },
+        {
+          "place_name": "Shop Keeper",
+          "x": 18,
+          "y": 29
+        },
+        {
+          "place_name": "Spawn",
+          "x": 16,
+          "y": 30
         }
       ],
       "player": {
@@ -27,6 +48,23 @@
         { "x": 12, "y": 14, "destination": "map.tmx" },
         { "x": 13, "y": 14, "destination": "map.tmx" }
       ],
+      "navigation_destinations": [
+        {
+          "place_name": "Entrance",
+          "x": 12,
+          "y": 13
+        },
+        {
+          "place_name": "Table 1",
+          "x": 7,
+          "y": 6
+        },
+        {
+          "place_name": "Table 2",
+          "x": 17,
+          "y": 6
+        }
+      ],
       "roaming_mobs": [],
       "enemy_trainers": [],
       "shop_keepers": [],
@@ -38,12 +76,34 @@
     {
       "path": "home.tmx",
       "teleport": [
-        {"x": 8, "y": 15, "destination": "map.tmx"},
-        {"x": 9, "y": 15, "destination": "map.tmx"}
+        {"x": 7, "y": 15, "destination": "map.tmx"},
+        {"x": 8, "y": 15, "destination": "map.tmx"}
+      ],
+      "navigation_destinations": [
+        {
+          "place_name": "Entrance/Exit",
+          "x": 7,
+          "y": 14
+        },
+        {
+          "place_name": "Kitchen",
+          "x": 2,
+          "y": 6
+        },
+        {
+          "place_name": "Tables",
+          "x": 10,
+          "y": 5
+        },
+        {
+          "place_name": "Spawn",
+          "x": 8,
+          "y": 11
+        }
       ],
       "player": {
-        "x": 0.0,
-        "y": 0.0
+        "x": 8,
+        "y": 11
       },
       "enemy_trainers": [],
       "shop_keepers": []
