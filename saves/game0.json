@@ -176,58 +176,48 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 13.12160808101422,
-    "y": 30.72981154211952
+    "x": 15.78920014357497,
+    "y": 31.236714862200753
   },
   "bag": {
     "monsters": [
       {
         "name": "Pikachu",
-        "hp": 85,
+        "hp": 74,
         "max_hp": 100,
         "level": 25,
-        "sprite_path": "menu_sprites/menusprite1.png"
+        "sprite_path": "menu_sprites/menusprite3.png",
+        "element": "Grass"
       },
       {
         "name": "Charizard",
-        "hp": 150,
+        "hp": 134,
         "max_hp": 200,
         "level": 36,
-        "sprite_path": "menu_sprites/menusprite2.png"
+        "sprite_path": "menu_sprites/menusprite9.png",
+        "element": "Fire"
       },
       {
         "name": "Blastoise",
-        "hp": 120,
+        "hp": 99,
         "max_hp": 180,
         "level": 32,
-        "sprite_path": "menu_sprites/menusprite3.png"
+        "sprite_path": "menu_sprites/menusprite14.png",
+        "element": "Water"
       },
       {
         "name": "Venusaur",
         "hp": 90,
         "max_hp": 160,
-        "level": 30,
-        "sprite_path": "menu_sprites/menusprite4.png"
-      },
-      {
-        "name": "Gengar",
-        "hp": 110,
-        "max_hp": 140,
-        "level": 28,
-        "sprite_path": "menu_sprites/menusprite5.png"
-      },
-      {
-        "name": "Dragonite",
-        "hp": 180,
-        "max_hp": 220,
-        "level": 40,
-        "sprite_path": "menu_sprites/menusprite6.png"
+        "level": 31,
+        "sprite_path": "menu_sprites/menusprite16.png",
+        "element": "Grass"
       }
     ],
     "items": [
       {
         "name": "Coins",
-        "count": 503,
+        "count": 553,
         "sprite_path": "ingame_ui/coin.png"
       },
       {
@@ -247,7 +237,7 @@
       },
       {
         "name": "Pokeball",
-        "count": 16,
+        "count": 15,
         "sprite_path": "ingame_ui/ball.png"
       }
     ]

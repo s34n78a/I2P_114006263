@@ -175,8 +175,8 @@ class GameScene(Scene):
         self.button_sell = Button(
             img_path="UI/button_shop.png",
             img_hovered_path="UI/button_shop_hover.png",
-            x=(GameSettings.SCREEN_WIDTH // 2 - 150),
-            y=(GameSettings.SCREEN_HEIGHT // 2 + 200),
+            x=(GameSettings.SCREEN_WIDTH // 2 - 125),
+            y=(GameSettings.SCREEN_HEIGHT // 2 + 190),
             width=45, height=45,
             on_click=self.sell_selected_monster
         )
@@ -186,8 +186,8 @@ class GameScene(Scene):
         self.button_buy = Button(
             img_path="UI/button_shop.png",
             img_hovered_path="UI/button_shop_hover.png",
-            x=(GameSettings.SCREEN_WIDTH // 2 + 150),
-            y=(GameSettings.SCREEN_HEIGHT // 2 + 200),
+            x=(GameSettings.SCREEN_WIDTH // 2 + 140),
+            y=(GameSettings.SCREEN_HEIGHT // 2 + 190),
             width=45, height=45,
             on_click=self.buy_selected_item
         )
@@ -394,10 +394,18 @@ class GameScene(Scene):
     def close_backpack_overlay(self):
         self.show_backpack_overlay = False
         self.backpack_overlay.hide()
+        
+        # monster id sama item id direset
+        self.selected_monster_index = None
+        self.selected_item_index = None
 
     def close_shop_overlay(self):
         self.show_shop_overlay = False
         self.shop_overlay.hide()
+        
+        # monster id sama item id direset
+        self.selected_monster_index = None
+        self.selected_item_index = None
 
     def close_navigation_overlay(self):
         self.show_navigation_overlay = False
@@ -494,10 +502,10 @@ class GameScene(Scene):
             self.draw_item_list(screen)
 
             # label sell/buy
-            sell_label = text_overlay_font.render("Sell", False, (0, 0, 0))
-            screen.blit(sell_label, (GameSettings.SCREEN_WIDTH // 2 - 200, GameSettings.SCREEN_HEIGHT // 2 + 210))
-            buy_label = text_overlay_font.render("Buy", False, (0, 0, 0))
-            screen.blit(buy_label, (GameSettings.SCREEN_WIDTH // 2 + 100, GameSettings.SCREEN_HEIGHT // 2 + 210))
+            sell_label = text_overlay_font.render("Sell Monsters", False, (0, 0, 0))
+            screen.blit(sell_label, (GameSettings.SCREEN_WIDTH // 2 - 225, GameSettings.SCREEN_HEIGHT // 2 + 210))
+            buy_label = text_overlay_font.render("Buy Items", False, (0, 0, 0))
+            screen.blit(buy_label, (GameSettings.SCREEN_WIDTH // 2 + 50, GameSettings.SCREEN_HEIGHT // 2 + 210))
 
         # bikin layar overlay navigation kalo dibuka (checkpoint 3)
         elif self.show_navigation_overlay:
@@ -606,12 +614,14 @@ class GameScene(Scene):
                 level = m.get("level", "?")
                 hp = m.get("hp", "?")
                 max_hp = m.get("max_hp", "?")
+                element = m.get("element", "?")
             else:
                 sprite_path = getattr(m, "sprite_path", None)
                 name = getattr(m, "name", "Unknown")
                 level = getattr(m, "level", "?")
                 hp = getattr(m, "hp", "?")
                 max_hp = getattr(m, "max_hp", "?")
+                element = getattr(m, "element", "?")
             
             # gambar mini banner di belakang
             if mini_banner:
@@ -640,6 +650,12 @@ class GameScene(Scene):
                 
                 if pg.mouse.get_pressed()[0]:  # left click
                     self.selected_monster_index = monsters.index(m)
+
+            # tetep kehighlight kalo udah dipilih dan di shop
+            if self.selected_monster_index == monsters.index(m) and self.show_shop_overlay:
+                highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
+                highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
+                screen.blit(highlight_surf, (self.monster_column_x, y))
 
             y += self.list_spacing
 
@@ -684,6 +700,12 @@ class GameScene(Scene):
                 
                 if pg.mouse.get_pressed()[0]:  # left click
                     self.selected_item_index = items.index(it)
+
+            # tetep kehighlight kalo udah dipilih dan di shop
+            if self.selected_item_index == items.index(it) and self.show_shop_overlay:
+                highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
+                highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
+                screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
 
     def save_game(self):
         # Save game state

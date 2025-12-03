@@ -76,6 +76,7 @@ class Monster(TypedDict):
     max_hp: int
     level: int
     sprite_path: str
+    element: str
 
 class Item(TypedDict):
     name: str

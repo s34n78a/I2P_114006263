@@ -21,12 +21,10 @@ pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 # enemy bakal milih random pokemon dari daftar ini
 ENEMY_MONSTER_POOL = [
-    {"name": "Pikachu", "hp": 40, "max_hp": 40, "level": 5, "sprite_path": "menu_sprites/menusprite1.png"},
-    {"name": "Charizard", "hp": 60, "max_hp": 60, "level": 8, "sprite_path": "menu_sprites/menusprite2.png"},
-    {"name": "Blastoise", "hp": 50, "max_hp": 50, "level": 6, "sprite_path": "menu_sprites/menusprite3.png"},
-    {"name": "Venusaur",  "hp": 30,  "max_hp": 30, "level": 4, "sprite_path": "menu_sprites/menusprite4.png" },
-    {"name": "Gengar",    "hp": 35, "max_hp": 35, "level": 7, "sprite_path": "menu_sprites/menusprite5.png" },
-    {"name": "Dragonite", "hp": 60, "max_hp": 60, "level": 9, "sprite_path": "menu_sprites/menusprite6.png" }
+    {"name": "Pikachu", "hp": 40, "max_hp": 40, "level": 5, "sprite_path": "menu_sprites/menusprite3.png", "element": "Grass"},
+    {"name": "Charizard", "hp": 60, "max_hp": 60, "level": 8, "sprite_path": "menu_sprites/menusprite9.png", "element": "Fire"},
+    {"name": "Blastoise", "hp": 50, "max_hp": 50, "level": 6, "sprite_path": "menu_sprites/menusprite14.png", "element": "Water"},
+    {"name": "Venusaur",  "hp": 30,  "max_hp": 30, "level": 4, "sprite_path": "menu_sprites/menusprite16.png", "element": "Grass" }
 ]
 
 class BattleScene(Scene):
@@ -77,7 +75,7 @@ class BattleScene(Scene):
         self.btn_catch = Button(
             img_path="UI/raw/UI_Flat_Button01a_4.png",
             img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
-            x=300, y=y,
+            x=500, y=y,
             width=btn_w, height=btn_h,
             on_click=self.on_catch
         )
@@ -138,6 +136,10 @@ class BattleScene(Scene):
         self.player_defense_boost = 0
         self.enemy_damage_boost = 0
         self.enemy_defense_boost = 0
+
+        self.change_menu_cooldown = 0.001  # seconds
+        self.reset_menu_cooldown = 0.001
+        self.ignore_mouse_until_release = False  # block input until the mouse button is released after menu changes
 
     # nanti dipanggil EnemyTrainer sebelum scene switch
     @classmethod
@@ -220,12 +222,36 @@ class BattleScene(Scene):
     def on_run(self): # player run
         Logger.info("[BATTLE] Run button clicked, returning to game scene")
         scene_manager.change_scene("game")
+        
+        # reset boost
+        self.player_damage_boost = 0
+        self.player_defense_boost = 0
+        self.enemy_damage_boost = 0
+        self.enemy_defense_boost = 0
 
     def on_attack(self): # player attack
-        if self.turn != "player":
+        if self.turn != "player" and self.change_menu_cooldown > 0:
             return  # bukan giliran player
 
+        its_effective = False
         dmg = int(10 * (100 + self.player_monster['level'])/ 100)  # base damage 10
+
+        if self.player_monster['element'] == "Fire" and self.enemy_monster['element'] == "Grass":
+            self.player_damage_boost += 5
+            its_effective = True
+        elif self.player_monster['element'] == "Water" and self.enemy_monster['element'] == "Fire":
+            self.player_damage_boost += 5
+            its_effective = True
+        elif self.player_monster['element'] == "Grass" and self.enemy_monster['element'] == "Water":
+            self.player_damage_boost += 5
+            its_effective = True
+
+        elif self.player_monster['element'] == "Grass" and self.enemy_monster['element'] == "Fire":
+            self.enemy_defense_boost += 5
+        elif self.player_monster['element'] == "Fire" and self.enemy_monster['element'] == "Water":
+            self.enemy_defense_boost += 5
+        elif self.player_monster['element'] == "Water" and self.enemy_monster['element'] == "Grass":
+            self.enemy_defense_boost += 5        
 
         total_dmg = dmg + self.player_damage_boost - self.enemy_defense_boost
 
@@ -244,7 +270,10 @@ class BattleScene(Scene):
             Logger.info(f"[BATTLE] Enemy's defense boost of {self.enemy_defense_boost} applied.")
             self.txt1 += f" - {self.enemy_defense_boost}"
 
-        self.txt1 += " damage."
+        self.txt1 += f" = {total_dmg} damage."
+
+        if its_effective:
+            self.txt1 += " It's super effective!"
 
         self.player_damage_boost = 0  # reset boost setelah dipake
         self.enemy_defense_boost = 0  # reset boost setelah dipake
@@ -259,6 +288,7 @@ class BattleScene(Scene):
                 self.txt2 = f"Enemy {self.enemy_monster['name']} fainted! You win!"
 
             self.turn = "win"
+            self.change_menu_cooldown = self.reset_menu_cooldown
 
             if self.enemy != "wild":
                 return  # gak dapet exp kalo lawan wild
@@ -274,7 +304,7 @@ class BattleScene(Scene):
         self.turn = "enemy"
         
     def on_catch(self):
-        if self.turn != "win" and self.already_catch:
+        if self.turn != "win" and self.already_catch and self.change_menu_cooldown > 0:
             return
         
         # check kalau bag udh ada 6 monsters
@@ -303,6 +333,8 @@ class BattleScene(Scene):
         self.txt2 = ""
         self.already_catch = True
 
+        self.change_menu_cooldown = self.reset_menu_cooldown
+
     def on_switch(self):
         if self.turn != "player":
             return  # bukan giliran player
@@ -328,27 +360,31 @@ class BattleScene(Scene):
 
     # checkpoint 3
     def on_item(self):
-        if self.turn != "player":
+        if self.turn != "player" and self.change_menu_cooldown > 0:
             return  # bukan giliran player
         
+        self.change_menu_cooldown = self.reset_menu_cooldown
         self.turn = "item"
+        self.ignore_mouse_until_release = True
 
         Logger.info("[BATTLE] Item button clicked — Open item menu")
         self.txt1 = "No items implemented yet."
         self.txt2 = ""
 
     def on_back(self):
-        if self.turn != "item":
+        if self.turn != "item" and self.change_menu_cooldown > 0:
             return  # bukan buka item
         
+        self.change_menu_cooldown = self.reset_menu_cooldown
         self.turn = "player"
+        self.ignore_mouse_until_release = True
 
         Logger.info("[BATTLE] Back button clicked — Back to battle")
         self.txt1 = "Back to battle."
         self.txt2 = ""
 
     def on_health_potion(self):
-        if self.turn != "item":
+        if self.turn != "item" and self.change_menu_cooldown > 0:
             return  # bukan buka item
 
         # cek health potion di bag
@@ -369,7 +405,7 @@ class BattleScene(Scene):
         self.txt2 = ""
 
     def on_strength_potion(self):
-        if self.turn != "item":
+        if self.turn != "item" and self.change_menu_cooldown > 0:
             return  # bukan buka item
 
         # cek strength potion di bag
@@ -383,11 +419,11 @@ class BattleScene(Scene):
         self.player_damage_boost += 5
 
         Logger.info(f"[BATTLE] Used Strength Potion on {self.player_monster['name']} (total boost: {self.player_damage_boost})")
-        self.txt1 = f"Used Strength Potion on {self.player_monster['name']}, damage increased by {self.player_damage_boost}."
+        self.txt1 = f"Used Strength Potion on {self.player_monster['name']}, damage increased by total of {self.player_damage_boost}."
         self.txt2 = ""
 
     def on_defense_potion(self):
-        if self.turn != "item":
+        if self.turn != "item" and self.change_menu_cooldown > 0:
             return  # bukan buka item
 
         # cek defense potion di bag
@@ -401,11 +437,29 @@ class BattleScene(Scene):
         self.player_defense_boost += 5
 
         Logger.info(f"[BATTLE] Used Defense Potion on {self.player_monster['name']} (total boost: {self.player_defense_boost})")
-        self.txt1 = f"Used Defense Potion on {self.player_monster['name']}, defense increased by {self.player_defense_boost}."
+        self.txt1 = f"Used Defense Potion on {self.player_monster['name']}, defense increased by total of {self.player_defense_boost}."
         self.txt2 = ""
 
     def enemy_attack_logic(self):
+        its_effective = False
         dmg = int(8 * (100 + self.enemy_monster['level']) / 100) # base damage 8, lebih kecil biar gampang menang
+
+        if self.enemy_monster['element'] == "Fire" and self.player_monster['element'] == "Grass":
+            self.enemy_damage_boost += 5
+            its_effective = True
+        elif self.enemy_monster['element'] == "Water" and self.player_monster['element'] == "Fire":
+            self.enemy_damage_boost += 5
+            its_effective = True
+        elif self.enemy_monster['element'] == "Grass" and self.player_monster['element'] == "Water":
+            self.enemy_damage_boost += 5
+            its_effective = True
+
+        elif self.enemy_monster['element'] == "Grass" and self.player_monster['element'] == "Fire":
+            self.player_defense_boost += 5
+        elif self.enemy_monster['element'] == "Fire" and self.player_monster['element'] == "Water":
+            self.player_defense_boost += 5
+        elif self.enemy_monster['element'] == "Water" and self.player_monster['element'] == "Grass":
+            self.player_defense_boost += 5
         
         total_dmg = dmg + self.enemy_damage_boost - self.player_defense_boost
 
@@ -424,7 +478,10 @@ class BattleScene(Scene):
             Logger.info(f"[BATTLE] Player's defense boost of {self.player_defense_boost} applied.")
             self.txt2 += f" - {self.player_defense_boost}"
 
-        self.txt2 += " damage."
+        self.txt2 += f" = {total_dmg} damage."
+
+        if its_effective:
+            self.txt2 += " It's super effective!"
 
         self.player_defense_boost = 0  # reset boost setelah dipake
         self.enemy_damage_boost = 0  # reset boost setelah dipake
@@ -439,21 +496,37 @@ class BattleScene(Scene):
         self.turn = "player"
 
     def update(self, dt):
-        
+        Logger.info(f"cooldown: {self.change_menu_cooldown}")
+
+        # If we just changed menus, wait until the mouse button is released before processing further input.
+        # This prevents a single click from activating an overlapping button in the newly opened menu.
+        if self.ignore_mouse_until_release:
+            if pg.mouse.get_pressed()[0]:  # left mouse still pressed
+                return
+            else:
+                self.ignore_mouse_until_release = False
+
         # enemy turn logic langsung serang
         if self.turn == "enemy":
             self.enemy_attack_logic()
             return
+        
+        # cooldown change menu
+        self.change_menu_cooldown -= dt
+        if self.change_menu_cooldown < 0:
+            self.change_menu_cooldown = 0
+        else:
+            return
 
         # buttons muncul kalau player turn
-        if self.turn == "player":
+        if self.turn == "player" and self.change_menu_cooldown == 0:
             self.btn_run.update(dt)
             self.btn_attack.update(dt)
             self.btn_switch.update(dt)
             self.btn_item.update(dt)
 
         # checkpoint 3
-        if self.turn == "item":
+        if self.turn == "item" and self.change_menu_cooldown == 0:
             self.btn_back.update(dt)
             self.btn_health_potion.update(dt)
             self.btn_strength_potion.update(dt)

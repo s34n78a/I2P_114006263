@@ -57,6 +57,7 @@ class Button(UIComponent):
 
             # Detect click (1 = left mouse button)
             if input_manager.mouse_pressed(1) and self.on_click is not None:
+                #Logger.info(f"Button clicked. Running on_click callback: {self.on_click}")
                 self.on_click()
         else:
             # ga hover
