@@ -5,6 +5,7 @@ import random
 from src.sprites import BackgroundSprite
 from src.scenes.scene import Scene
 from src.core.services import scene_manager
+from src.core.managers.game_manager import GameManager
 from src.utils import Logger, loader
 
 from src.interface.components.button import Button
@@ -35,15 +36,18 @@ class BattleScene(Scene):
     def __init__(self):
         super().__init__()
         self.enemy = None
-        self.game_manager = None   # SceneManager bakal inject
+        self.game_manager: GameManager | None = None   # SceneManager bakal inject
 
         self.background = BackgroundSprite("backgrounds/background1.png")
         self.menu_background = BackgroundSprite("UI/raw/UI_Flat_FrameMarker01a.png")
-        self.txt_x = 100
-        self.txt_y = 550
-        self.txt = ''
+        self.txt1_x = 100
+        self.txt1_y = 550
+        self.txt1 = ''
+        self.txt2_x = 100
+        self.txt2_y = 575
+        self.txt2 = ''
 
-        # turn state: "player", "enemy", "win", "lose"
+        # turn state: "player", "enemy", "win", "lose", "no monsters", "item"
         self.turn = "player"
 
         # monsters (dictionaries)
@@ -86,7 +90,54 @@ class BattleScene(Scene):
             on_click=self.on_switch
         )
 
+        # checkpoint 3
+        self.btn_item = Button(
+            img_path="UI/raw/UI_Flat_Button01a_4.png",
+            img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
+            x=700, y=y,
+            width=btn_w, height=btn_h,
+            on_click=self.on_item
+        )
+
+        self.btn_back = Button(
+            img_path="UI/raw/UI_Flat_Button01a_4.png",
+            img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
+            x=100, y=y,
+            width=btn_w, height=btn_h,
+            on_click=self.on_back
+        )
+
+        self.btn_health_potion = Button(
+            img_path="UI/raw/UI_Flat_Button01a_4.png",
+            img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
+            x=300, y=y,
+            width=btn_w+20, height=btn_h,
+            on_click=self.on_health_potion
+        )
+
+        self.btn_strength_potion = Button(
+            img_path="UI/raw/UI_Flat_Button01a_4.png",
+            img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
+            x=520, y=y,
+            width=btn_w+20, height=btn_h,
+            on_click=self.on_strength_potion
+        )
+
+        self.btn_defense_potion = Button(
+            img_path="UI/raw/UI_Flat_Button01a_4.png",
+            img_hovered_path="UI/raw/UI_Flat_Button01a_1.png",
+            x=740, y=y,
+            width=btn_w+20, height=btn_h,
+            on_click=self.on_defense_potion
+        )
+
         self.already_catch = False
+
+        # checkpoint 3
+        self.player_damage_boost = 0
+        self.player_defense_boost = 0
+        self.enemy_damage_boost = 0
+        self.enemy_defense_boost = 0
 
     # nanti dipanggil EnemyTrainer sebelum scene switch
     @classmethod
@@ -129,7 +180,8 @@ class BattleScene(Scene):
         # setup player monster (ambil dari game_manager.player.bag)
         if len(self.game_manager.bag.monsters) == 0: # cek ada monster gak
             Logger.info("[BATTLE] Warning — player has no monsters in bag")
-            self.txt = 'You have no monsters!'
+            self.txt1 = 'You have no monsters!'
+            self.txt2 = ''
             self.turn = "no monsters"
             return
         
@@ -139,7 +191,8 @@ class BattleScene(Scene):
             monster_id += 1
             if monster_id >= len(self.game_manager.bag.monsters):
                 Logger.info("[BATTLE] warning — all player monsters are fainted")
-                self.txt = 'All your monsters are fainted!'
+                self.txt1 = 'All your monsters are fainted!'
+                self.txt2 = ''
                 self.turn = "no monsters"
                 return
             self.player_monster = self.game_manager.bag.monsters[monster_id]
@@ -152,9 +205,10 @@ class BattleScene(Scene):
         Logger.info(f"[BATTLE] Enemy uses {self.enemy_monster['name']} ({self.enemy_monster['hp']} HP)")
         
         if self.enemy == "wild":
-            self.txt = f"A wild {self.enemy_monster['name']} appears!"
+            self.txt1 = f"A wild {self.enemy_monster['name']} appears!"
         else:
-            self.txt = f"Enemy uses {self.enemy_monster['name']}"
+            self.txt1 = f"Enemy uses {self.enemy_monster['name']}"
+        self.txt2 = ''
     
         self.turn = "player" # dua kali biar aman
         self.already_catch = False # belum nangkep
@@ -171,21 +225,49 @@ class BattleScene(Scene):
         if self.turn != "player":
             return  # bukan giliran player
 
-        dmg = 10  # damage tetap 10 biar simpel
-        self.enemy_monster['hp'] -= dmg
-        Logger.info(f"[BATTLE] Player's {self.player_monster['name']} attacks! Enemy's {self.enemy_monster['name']} takes {dmg} damage (HP left: {self.enemy_monster['hp']})")
-        self.txt = f"{self.player_monster['name']} attacks! Enemy's {self.enemy_monster['name']} takes {dmg} damage."
+        dmg = int(10 * (100 + self.player_monster['level'])/ 100)  # base damage 10
+
+        total_dmg = dmg + self.player_damage_boost - self.enemy_defense_boost
+
+        if total_dmg < 0:
+            total_dmg = 0
+
+        self.enemy_monster['hp'] -= total_dmg
+        Logger.info(f"[BATTLE] Player's {self.player_monster['name']} attacks! Enemy's {self.enemy_monster['name']} takes {total_dmg} damage (HP left: {self.enemy_monster['hp']})")
+        self.txt1 = f"{self.player_monster['name']} attacks! Enemy's {self.enemy_monster['name']} takes {dmg}"
+        
+        if self.player_damage_boost > 0:
+            Logger.info(f"[BATTLE] Player's damage boost of {self.player_damage_boost} applied.")
+            self.txt1 += f" + {self.player_damage_boost}"
+
+        if self.enemy_defense_boost > 0:
+            Logger.info(f"[BATTLE] Enemy's defense boost of {self.enemy_defense_boost} applied.")
+            self.txt1 += f" - {self.enemy_defense_boost}"
+
+        self.txt1 += " damage."
+
+        self.player_damage_boost = 0  # reset boost setelah dipake
+        self.enemy_defense_boost = 0  # reset boost setelah dipake
 
         if self.enemy_monster['hp'] <= 0:
             self.enemy_monster['hp'] = 0
             Logger.info(f"[BATTLE] Enemy's {self.enemy_monster['name']} fainted! You win!")
             
             if self.enemy == "wild":
-                self.txt += f" Enemy {self.enemy_monster['name']} fainted! Press Catch to capture."
+                self.txt2 = f"Enemy {self.enemy_monster['name']} fainted! Press Catch to capture."
             else:
-                self.txt += f" Enemy {self.enemy_monster['name']} fainted! You win!"
+                self.txt2 = f"Enemy {self.enemy_monster['name']} fainted! You win!"
 
             self.turn = "win"
+
+            if self.enemy != "wild":
+                return  # gak dapet exp kalo lawan wild
+            
+            # bagi exp ke player monster
+            self.player_monster['level'] += 1  # naikin level
+            Logger.info(f"[BATTLE] Player's {self.player_monster['name']} leveled up to {self.player_monster['level']}!")
+            self.txt2 += f" Your {self.player_monster['name']} leveled up to level {self.player_monster['level']}!"
+
             return
 
         # ganti giliran ke enemy
@@ -198,13 +280,15 @@ class BattleScene(Scene):
         # check kalau bag udh ada 6 monsters
         if len(self.game_manager.bag.monsters) >= 6:
             Logger.info("[BATTLE] Cannot catch — party is full (6 monsters)")
-            self.txt = "You can't catch more! Your party is full."
+            self.txt1 = "You can't catch more! Your party is full."
+            self.txt2 = ""
             return
 
         # cek jumlah pokeball
         if not self.game_manager.bag.use_item("Pokeball"):
             Logger.info("[BATTLE] No Pokeballs left!")
-            self.txt = "No Pokeballs left!"
+            self.txt1 = "No Pokeballs left!"
+            self.txt2 = ""
             return
 
         # clone enemy monster terus restore HP
@@ -215,7 +299,8 @@ class BattleScene(Scene):
         self.game_manager.bag.monsters.append(caught)
 
         Logger.info(f"[BATTLE] Player caught {self.enemy_monster['name']}!")
-        self.txt = f"You caught {caught['name']}!"
+        self.txt1 = f"You caught {caught['name']}!"
+        self.txt2 = ""
         self.already_catch = True
 
     def on_switch(self):
@@ -231,25 +316,124 @@ class BattleScene(Scene):
             if candidate['hp'] > 0:
                 self.player_monster = candidate
                 Logger.info(f"[BATTLE] Player switched to {self.player_monster['name']}")
-                self.txt = f"You switched to {self.player_monster['name']}."
+                self.txt1 = f"You switched to {self.player_monster['name']}."
+                self.txt2 = ''
                 return
             next_index = (next_index + 1) % len(self.game_manager.bag.monsters)
             searched += 1
 
         Logger.info("[BATTLE] No other alive monsters to switch to!")
-        self.txt = "No other alive monsters to switch to!"
+        self.txt1 = "No other alive monsters to switch to!"
+        self.txt2 = ""
+
+    # checkpoint 3
+    def on_item(self):
+        if self.turn != "player":
+            return  # bukan giliran player
+        
+        self.turn = "item"
+
+        Logger.info("[BATTLE] Item button clicked — Open item menu")
+        self.txt1 = "No items implemented yet."
+        self.txt2 = ""
+
+    def on_back(self):
+        if self.turn != "item":
+            return  # bukan buka item
+        
+        self.turn = "player"
+
+        Logger.info("[BATTLE] Back button clicked — Back to battle")
+        self.txt1 = "Back to battle."
+        self.txt2 = ""
+
+    def on_health_potion(self):
+        if self.turn != "item":
+            return  # bukan buka item
+
+        # cek health potion di bag
+        if not self.game_manager.bag.use_item("Health Potion"):
+            Logger.info("[BATTLE] No Health Potions left!")
+            self.txt1 = "No Health Potions left!"
+            self.txt2 = ""
+            return
+
+        # heal 20 HP
+        heal_amount = 20
+        self.player_monster['hp'] += heal_amount
+        if self.player_monster['hp'] > self.player_monster['max_hp']:
+            self.player_monster['hp'] = self.player_monster['max_hp']
+
+        Logger.info(f"[BATTLE] Used Health Potion on {self.player_monster['name']}, healed {heal_amount} HP (current HP: {self.player_monster['hp']})")
+        self.txt1 = f"Used Health Potion on {self.player_monster['name']}, healed {heal_amount} HP."
+        self.txt2 = ""
+
+    def on_strength_potion(self):
+        if self.turn != "item":
+            return  # bukan buka item
+
+        # cek strength potion di bag
+        if not self.game_manager.bag.use_item("Strength Potion"):
+            Logger.info("[BATTLE] No Strength Potions left!")
+            self.txt1 = "No Strength Potions left!"
+            self.txt2 = ""
+            return
+
+        # naikin level 1
+        self.player_damage_boost += 5
+
+        Logger.info(f"[BATTLE] Used Strength Potion on {self.player_monster['name']} (total boost: {self.player_damage_boost})")
+        self.txt1 = f"Used Strength Potion on {self.player_monster['name']}, damage increased by {self.player_damage_boost}."
+        self.txt2 = ""
+
+    def on_defense_potion(self):
+        if self.turn != "item":
+            return  # bukan buka item
+
+        # cek defense potion di bag
+        if not self.game_manager.bag.use_item("Defense Potion"):
+            Logger.info("[BATTLE] No Defense Potions left!")
+            self.txt1 = "No Defense Potions left!"
+            self.txt2 = ""
+            return
+
+        # naikin level 1
+        self.player_defense_boost += 5
+
+        Logger.info(f"[BATTLE] Used Defense Potion on {self.player_monster['name']} (total boost: {self.player_defense_boost})")
+        self.txt1 = f"Used Defense Potion on {self.player_monster['name']}, defense increased by {self.player_defense_boost}."
+        self.txt2 = ""
 
     def enemy_attack_logic(self):
-        dmg = 8 # damage tetap 8 biar simpel, lebih kecil biar gampang menang
-        self.player_monster["hp"] -= dmg
-        Logger.info(f"[BATTLE] Enemy deals {dmg} damage")
-        self.txt += f" Enemy attacks! Your {self.player_monster['name']} takes {dmg} damage."
+        dmg = int(8 * (100 + self.enemy_monster['level']) / 100) # base damage 8, lebih kecil biar gampang menang
+        
+        total_dmg = dmg + self.enemy_damage_boost - self.player_defense_boost
+
+        if total_dmg < 0:
+            total_dmg = 0
+
+        self.player_monster["hp"] -= total_dmg
+        Logger.info(f"[BATTLE] Enemy deals {total_dmg} damage")
+        self.txt2 = f"Enemy attacks! Your {self.player_monster['name']} takes {dmg}"
+
+        if self.enemy_damage_boost > 0:
+            Logger.info(f"[BATTLE] Enemy's damage boost of {self.enemy_damage_boost} applied.")
+            self.txt2 += f" + {self.enemy_damage_boost}"
+
+        if self.player_defense_boost > 0:
+            Logger.info(f"[BATTLE] Player's defense boost of {self.player_defense_boost} applied.")
+            self.txt2 += f" - {self.player_defense_boost}"
+
+        self.txt2 += " damage."
+
+        self.player_defense_boost = 0  # reset boost setelah dipake
+        self.enemy_damage_boost = 0  # reset boost setelah dipake
 
         if self.player_monster["hp"] <= 0:
             self.player_monster["hp"] = 0
             self.turn = "lose"
             Logger.info("[BATTLE] Player monster fainted!")
-            self.txt += f" Your {self.player_monster['name']} fainted! You lose!"
+            self.txt2 += f" Your {self.player_monster['name']} fainted! You lose!"
             return
 
         self.turn = "player"
@@ -266,6 +450,14 @@ class BattleScene(Scene):
             self.btn_run.update(dt)
             self.btn_attack.update(dt)
             self.btn_switch.update(dt)
+            self.btn_item.update(dt)
+
+        # checkpoint 3
+        if self.turn == "item":
+            self.btn_back.update(dt)
+            self.btn_health_potion.update(dt)
+            self.btn_strength_potion.update(dt)
+            self.btn_defense_potion.update(dt)
 
         if self.turn in ["win", "lose", "no monsters"]:
             self.btn_run.update(dt)  # pake tombol run buat keluar
@@ -339,8 +531,30 @@ class BattleScene(Scene):
             switch_label = minecraft_font.render("Switch", True, (0, 0, 0))
             screen.blit(switch_label, switch_label.get_rect(center=self.btn_switch.hitbox.center))
 
+            self.btn_item.draw(screen)
+            item_label = minecraft_font.render("Item", True, (0, 0, 0))
+            screen.blit(item_label, item_label.get_rect(center=self.btn_item.hitbox.center))
+
+        if self.turn == "item":
+            self.btn_back.draw(screen)
+            back_label = minecraft_font.render("Back", True, (0, 0, 0))
+            screen.blit(back_label, back_label.get_rect(center=self.btn_back.hitbox.center))
+
+            self.btn_health_potion.draw(screen)
+            hp_potion_item_label = minecraft_font.render("Health Potion", True, (0, 0, 0))
+            screen.blit(hp_potion_item_label, hp_potion_item_label.get_rect(center=self.btn_health_potion.hitbox.center))
+
+            self.btn_strength_potion.draw(screen)
+            str_potion_item_label = minecraft_font.render("Strength Potion", True, (0, 0, 0))
+            screen.blit(str_potion_item_label, str_potion_item_label.get_rect(center=self.btn_strength_potion.hitbox.center))
+
+            self.btn_defense_potion.draw(screen)
+            def_potion_item_label = minecraft_font.render("Defense Potion", True, (0, 0, 0))
+            screen.blit(def_potion_item_label, def_potion_item_label.get_rect(center=self.btn_defense_potion.hitbox.center))
+
         # print text, termasuk WIN/LOSE screens
-        screen.blit(text_font.render(self.txt, True, (0, 0, 0)), (self.txt_x, self.txt_y))
+        screen.blit(text_font.render(self.txt1, True, (0, 0, 0)), (self.txt1_x, self.txt1_y))
+        screen.blit(text_font.render(self.txt2, True, (0, 0, 0)), (self.txt2_x, self.txt2_y))
             
         if self.turn in ["win", "lose", "no monsters"]:
             self.btn_run.draw(screen) # pake tombol run buat keluar
