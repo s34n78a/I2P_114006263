@@ -10,7 +10,7 @@ from .entity import Entity
 from src.sprites import Sprite
 from src.core import GameManager
 from src.core.services import input_manager, scene_manager
-from src.utils import GameSettings, Direction, Position, PositionCamera
+from src.utils import GameSettings, Direction, Position, PositionCamera, Logger
 
 from src.scenes import game_scene
 
@@ -59,6 +59,10 @@ class ShopKeeper(Entity):
         self._movement.update(self, dt)
         self._has_los_to_player()
         if self.detected and input_manager.key_pressed(pygame.K_SPACE):
+            # checkpoint 3, player ga boleh lagi teleport atau auto path pas shop
+            if self.game_manager.player.in_teleport or self.game_manager.player.auto_path is not None:
+                Logger.info("[SHOP KEEPER] Player cannot shop while teleporting or auto pathing.")
+                return
             game_scene.GameScene.open_shop_overlay(scene_manager.current_scene)
         self.animation.update_pos(self.position)
 

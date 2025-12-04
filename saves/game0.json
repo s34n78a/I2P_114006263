@@ -177,48 +177,48 @@
   "current_map": "map.tmx",
   "player": {
     "x": 26.847514718625767,
-    "y": 24.843514718625762
+    "y": 27.34351471862576
   },
   "bag": {
     "monsters": [
       {
-        "name": "Pikachu",
-        "hp": 22,
-        "max_hp": 100,
-        "level": 25,
+        "name": "Raichu",
+        "hp": 176,
+        "max_hp": 200,
+        "level": 31,
         "sprite_path": "menu_sprites/menusprite3.png",
         "element": "Grass",
-        "evolution_sprite_path": [
-          "menu_sprites/menusprite1.png",
-          "menu_sprites/menusprite2.png",
-          "menu_sprites/menusprite3.png"
-        ]
+        "evolution": {
+          "Pichu": "menu_sprites/menusprite1.png",
+          "Pikachu": "menu_sprites/menusprite2.png",
+          "Raichu": "menu_sprites/menusprite3.png"
+        }
       },
       {
-        "name": "Charizard",
-        "hp": 118,
+        "name": "Charmeleon",
+        "hp": 150,
         "max_hp": 200,
         "level": 37,
-        "sprite_path": "menu_sprites/menusprite9.png",
+        "sprite_path": "menu_sprites/menusprite8.png",
         "element": "Fire",
-        "evolution_sprite_path": [
-          "menu_sprites/menusprite7.png",
-          "menu_sprites/menusprite8.png",
-          "menu_sprites/menusprite9.png"
-        ]
+        "evolution": {
+          "Charmander": "menu_sprites/menusprite7.png",
+          "Charmeleon": "menu_sprites/menusprite8.png",
+          "Charizard": "menu_sprites/menusprite9.png"
+        }
       },
       {
-        "name": "Blastoise",
-        "hp": 99,
+        "name": "Wartortle",
+        "hp": 120,
         "max_hp": 180,
         "level": 32,
-        "sprite_path": "menu_sprites/menusprite14.png",
+        "sprite_path": "menu_sprites/menusprite13.png",
         "element": "Water",
-        "evolution_sprite_path": [
-          "menu_sprites/menusprite12.png",
-          "menu_sprites/menusprite13.png",
-          "menu_sprites/menusprite14.png"
-        ]
+        "evolution": {
+          "Squirtle": "menu_sprites/menusprite12.png",
+          "Wartortle": "menu_sprites/menusprite13.png",
+          "Blastoise": "menu_sprites/menusprite14.png"
+        }
       },
       {
         "name": "Venusaur",
@@ -227,10 +227,10 @@
         "level": 31,
         "sprite_path": "menu_sprites/menusprite16.png",
         "element": "Grass",
-        "evolution_sprite_path": [
-          "menu_sprites/menusprite15.png",
-          "menu_sprites/menusprite16.png"
-        ]
+        "evolution": {
+          "Ivysaur": "menu_sprites/menusprite15.png",
+          "Venusaur": "menu_sprites/menusprite16.png"
+        }
       }
     ],
     "items": [

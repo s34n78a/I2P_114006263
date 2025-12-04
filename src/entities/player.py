@@ -73,6 +73,7 @@ class Player(Entity):
         
         if self.auto_path: # checkpoint 3
             next_tx, next_ty = self.auto_path[0]
+            #Logger.info(f"Next auto tile: ({next_tx}, {next_ty})")
 
             target_px = next_tx * GameSettings.TILE_SIZE
             target_py = next_ty * GameSettings.TILE_SIZE
@@ -196,43 +197,3 @@ class Player(Entity):
     def set_auto_path(self, tile_path):
         # auto walk mengikuti path tile list
         self.auto_path = tile_path[1:]  # skip current tile 
-
-    def _auto_move_step(self, dt):
-        if not self.auto_path:
-            return
-
-        next_tx, next_ty = self.auto_path[0]
-
-        target_px = next_tx * GameSettings.TILE_SIZE
-        target_py = next_ty * GameSettings.TILE_SIZE
-
-        Logger.info(f"Auto-moving to tile ({next_tx}, {next_ty}) at pixel ({target_px}, {target_py})")
-
-        dx = target_px - self.position.x
-        dy = target_py - self.position.y
-
-        dist = math.hypot(dx, dy)
-        if dist < 0.5:
-            # Snap to tile
-            self.position.x = target_px
-            self.position.y = target_py
-            self.auto_path.pop(0)
-
-            if not self.auto_path:
-                self.auto_path = None
-
-            return
-
-        # Normalized movement
-        vx = (dx / dist) * self.auto_speed * dt
-        vy = (dy / dist) * self.auto_speed * dt
-
-        # Move without overriding manual collision
-        rect = pg.Rect(self.position.x + vx, self.position.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-        if not self.game_manager.current_map.check_collision(rect):
-            self.position.x += vx
-
-        rect = pg.Rect(self.position.x, self.position.y + vy, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-        if not self.game_manager.current_map.check_collision(rect):
-            self.position.y += vy
-

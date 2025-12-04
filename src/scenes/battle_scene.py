@@ -7,6 +7,7 @@ from src.scenes.scene import Scene
 from src.core.services import scene_manager
 from src.core.managers.game_manager import GameManager
 from src.utils import Logger, loader
+from src.utils.definition import Monster
 
 from src.interface.components.button import Button
 
@@ -21,26 +22,27 @@ pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 # enemy bakal milih random pokemon dari daftar ini
 ENEMY_MONSTER_POOL = [
-    {"name": "Pikachu", "hp": 40, "max_hp": 40, "level": 5, "sprite_path": "menu_sprites/menusprite3.png", "element": "Grass", "evolution_sprite_path": [
-        "menu_sprites/menusprite1.png",
-        "menu_sprites/menusprite2.png",
-        "menu_sprites/menusprite3.png"
-    ]},
-    {"name": "Charizard", "hp": 60, "max_hp": 60, "level": 8, "sprite_path": "menu_sprites/menusprite9.png", "element": "Fire", "evolution_sprite_path": [
-        "menu_sprites/menusprite7.png",
-        "menu_sprites/menusprite8.png",
-        "menu_sprites/menusprite9.png"
-    ]},
-    {"name": "Blastoise", "hp": 50, "max_hp": 50, "level": 6, "sprite_path": "menu_sprites/menusprite14.png", "element": "Water", "evolution_sprite_path": [
-        "menu_sprites/menusprite12.png",
-        "menu_sprites/menusprite13.png",
-        "menu_sprites/menusprite14.png"
-    ]},
-    {"name": "Venusaur",  "hp": 30,  "max_hp": 30, "level": 4, "sprite_path": "menu_sprites/menusprite16.png", "element": "Grass", "evolution_sprite_path": [
-        "menu_sprites/menusprite15.png",
-        "menu_sprites/menusprite16.png"
-    ]}
+    {"name": "Pichu", "hp": 50, "max_hp": 50, "level": 7, "sprite_path": "menu_sprites/menusprite1.png", "element": "Grass", "evolution": {
+          "Pichu":"menu_sprites/menusprite1.png",
+          "Pikachu":"menu_sprites/menusprite2.png",
+          "Raichu":"menu_sprites/menusprite3.png"
+        }},
+    {"name": "Charmander", "hp": 100, "max_hp": 100, "level": 7, "sprite_path": "menu_sprites/menusprite7.png", "element": "Fire", "evolution": {
+          "Charmander":"menu_sprites/menusprite7.png",
+          "Charmeleon":"menu_sprites/menusprite8.png",
+          "Charizard":"menu_sprites/menusprite9.png"
+        }},
+    {"name": "Squirtle", "hp": 90, "max_hp": 90, "level": 7, "sprite_path": "menu_sprites/menusprite12.png", "element": "Water", "evolution": {
+          "Squirtle":"menu_sprites/menusprite12.png",
+          "Wartortle":"menu_sprites/menusprite13.png",
+          "Blastoise":"menu_sprites/menusprite14.png"
+        }},
+    {"name": "Ivysaur",  "hp": 80,  "max_hp": 80, "level": 7, "sprite_path": "menu_sprites/menusprite15.png", "element": "Grass", "evolution": {
+          "Ivysaur":"menu_sprites/menusprite15.png",
+          "Venusaur":"menu_sprites/menusprite16.png"
+        }}
 ]
+
 class BattleScene(Scene):
 
     _pending_enemy = None     # tempat EnemyTrainer disimpen sebelum masuk
@@ -146,6 +148,12 @@ class BattleScene(Scene):
         self.already_catch = False
 
         # checkpoint 3
+        self.final_evolution_level = 45
+        self.player_evolution = {}
+        self.player_evolution_stage = -1
+        self.enemy_evolution = {}
+        self.enemy_evolution_stage = -1
+
         self.player_damage_boost = 0
         self.player_defense_boost = 0
         self.enemy_damage_boost = 0
@@ -228,11 +236,11 @@ class BattleScene(Scene):
     
         self.turn = "player" # dua kali biar aman
         self.already_catch = False # belum nangkep
-    
+
     def exit(self):
         Logger.info("[BATTLE] Exiting BattleScene")
         self.enemy = None
-    
+
     def on_run(self): # player run
         Logger.info("[BATTLE] Run button clicked, returning to game scene")
         scene_manager.change_scene("game")
@@ -248,7 +256,8 @@ class BattleScene(Scene):
             return  # bukan giliran player
 
         its_effective = False
-        dmg = int(10 * (100 + self.player_monster['level'])/ 100)  # base damage 10
+        its_not_effective = False
+        dmg = int(10 * (self.final_evolution_level + self.player_monster['level']) / self.final_evolution_level)  # base damage 10
 
         if self.player_monster['element'] == "Fire" and self.enemy_monster['element'] == "Grass":
             self.player_damage_boost += 5
@@ -262,10 +271,13 @@ class BattleScene(Scene):
 
         elif self.player_monster['element'] == "Grass" and self.enemy_monster['element'] == "Fire":
             self.enemy_defense_boost += 5
+            its_not_effective = True
         elif self.player_monster['element'] == "Fire" and self.enemy_monster['element'] == "Water":
             self.enemy_defense_boost += 5
+            its_not_effective = True
         elif self.player_monster['element'] == "Water" and self.enemy_monster['element'] == "Grass":
             self.enemy_defense_boost += 5        
+            its_not_effective = True
 
         total_dmg = dmg + self.player_damage_boost - self.enemy_defense_boost
 
@@ -284,10 +296,15 @@ class BattleScene(Scene):
             Logger.info(f"[BATTLE] Enemy's defense boost of {self.enemy_defense_boost} applied.")
             self.txt1 += f" - {self.enemy_defense_boost}"
 
-        self.txt1 += f" = {total_dmg} damage."
+        if dmg != total_dmg:
+            self.txt1 += f" = {total_dmg}"
+
+        self.txt1 += " damage."
 
         if its_effective:
             self.txt1 += " It's super effective!"
+        elif its_not_effective:
+            self.txt1 += " It's not very effective..."
 
         self.player_damage_boost = 0  # reset boost setelah dipake
         self.enemy_defense_boost = 0  # reset boost setelah dipake
@@ -304,13 +321,19 @@ class BattleScene(Scene):
             self.turn = "win"
             self.change_menu_cooldown = self.reset_menu_cooldown
 
-            if self.enemy != "wild":
+            if self.enemy == "wild":
                 return  # gak dapet exp kalo lawan wild
             
             # bagi exp ke player monster
             self.player_monster['level'] += 1  # naikin level
             Logger.info(f"[BATTLE] Player's {self.player_monster['name']} leveled up to {self.player_monster['level']}!")
             self.txt2 += f" Your {self.player_monster['name']} leveled up to level {self.player_monster['level']}!"
+
+            # evolve tiap 15 level
+            if self.player_monster['level'] % 15 == 0:
+                self.evolve(self.player_monster)
+                Logger.info(f"[BATTLE] Player's monster evolved into {self.player_monster['name']}!")
+                self.txt2 += f" Your monster evolved into {self.player_monster['name']}!"
 
             return
 
@@ -456,7 +479,8 @@ class BattleScene(Scene):
 
     def enemy_attack_logic(self):
         its_effective = False
-        dmg = int(8 * (100 + self.enemy_monster['level']) / 100) # base damage 8, lebih kecil biar gampang menang
+        its_not_effective = False
+        dmg = int(8 * (self.final_evolution_level + self.enemy_monster['level']) / self.final_evolution_level) # base damage 8, lebih kecil biar gampang menang
 
         if self.enemy_monster['element'] == "Fire" and self.player_monster['element'] == "Grass":
             self.enemy_damage_boost += 5
@@ -470,10 +494,13 @@ class BattleScene(Scene):
 
         elif self.enemy_monster['element'] == "Grass" and self.player_monster['element'] == "Fire":
             self.player_defense_boost += 5
+            its_not_effective = True
         elif self.enemy_monster['element'] == "Fire" and self.player_monster['element'] == "Water":
             self.player_defense_boost += 5
+            its_not_effective = True
         elif self.enemy_monster['element'] == "Water" and self.player_monster['element'] == "Grass":
             self.player_defense_boost += 5
+            its_not_effective = True
         
         total_dmg = dmg + self.enemy_damage_boost - self.player_defense_boost
 
@@ -492,10 +519,15 @@ class BattleScene(Scene):
             Logger.info(f"[BATTLE] Player's defense boost of {self.player_defense_boost} applied.")
             self.txt2 += f" - {self.player_defense_boost}"
 
-        self.txt2 += f" = {total_dmg} damage."
+        if dmg != total_dmg:
+            self.txt2 += f" = {total_dmg}"
+        
+        self.txt2 += f" damage."
 
         if its_effective:
             self.txt2 += " It's super effective!"
+        elif its_not_effective:
+            self.txt2 += " It's not very effective..."
 
         self.player_defense_boost = 0  # reset boost setelah dipake
         self.enemy_damage_boost = 0  # reset boost setelah dipake
@@ -509,6 +541,23 @@ class BattleScene(Scene):
 
         self.turn = "player"
 
+    def evolve(self, monster: Monster):
+        # cari evolution stage
+        self.player_evolution = self.player_monster["evolution"]
+        self.player_evolution_stage = list(self.player_evolution.keys()).index(self.player_monster["name"])
+        
+        if self.player_evolution_stage + 1 >= len(self.player_evolution):
+            return  # gak bisa evolve lagi
+        
+        # evolve
+        new_name = list(self.player_evolution.keys())[self.player_evolution_stage + 1]
+        new_sprite_path = self.player_evolution[new_name]
+        self.player_monster["name"] = new_name
+        self.player_monster["sprite_path"] = new_sprite_path
+
+        self.player_monster["max_hp"] *= 2  # naikin max HP
+        self.player_monster["hp"] = self.player_monster["max_hp"]
+    
     def update(self, dt):
         Logger.info(f"cooldown: {self.change_menu_cooldown}")
 
@@ -556,7 +605,6 @@ class BattleScene(Scene):
         ratio = max(hp / max_hp, 0)
         pg.draw.rect(screen, (0, 0, 0), (x, y, w, h), 2)
         pg.draw.rect(screen, (255, 0, 0), (x+2, y+2, int((w-4) * ratio), h-4))
-
 
     def draw(self, screen):
         # Gambar background

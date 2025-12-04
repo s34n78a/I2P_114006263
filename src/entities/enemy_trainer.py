@@ -8,7 +8,7 @@ from .entity import Entity
 from src.sprites import Sprite
 from src.core import GameManager
 from src.core.services import input_manager, scene_manager
-from src.utils import GameSettings, Direction, Position, PositionCamera
+from src.utils import GameSettings, Direction, Position, PositionCamera, Logger
 
 from src.scenes.battle_scene import BattleScene 
 
@@ -58,7 +58,15 @@ class EnemyTrainer(Entity):
         self._movement.update(self, dt)
         self._has_los_to_player()
         if self.detected and input_manager.key_pressed(pygame.K_SPACE):
+            # checkpoint 3, player ga boleh lagi teleport atau auto path pas battle
+            # Logger.info(f"Player teleport: {self.game_manager.player.in_teleport}")
+            # Logger.info(f"Player auto path: {self.game_manager.player.auto_path}")
+            if self.game_manager.player.in_teleport or self.game_manager.player.auto_path is not None:
+                Logger.info("[ENEMY TRAINER] Player cannot battle while teleporting or auto pathing.")
+                return
+
             # checkpoint 2
+            Logger.info("[ENEMY TRAINER] Player detected by enemy trainer, initiating battle!")
             BattleScene.prepare(self)
             scene_manager.change_scene("battle")
         self.animation.update_pos(self.position)

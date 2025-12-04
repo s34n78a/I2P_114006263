@@ -77,7 +77,7 @@ class Monster(TypedDict):
     level: int
     sprite_path: str
     element: str
-    evolution_sprite_path: list[str]
+    evolution: dict[str, str]
 
 class Item(TypedDict):
     name: str
