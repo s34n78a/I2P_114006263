@@ -14,6 +14,8 @@ class Slider:
         self.knob_rect = pg.Rect(x + value * width - 8, y - 6, 16, 16)
 
     def update(self, dt):
+        self.knob_rect = pg.Rect(self.x + self.value * self.width - 8, self.y - 6, 16, 16)
+        
         mouse = pg.mouse.get_pos()
         click = pg.mouse.get_pressed()[0]
 

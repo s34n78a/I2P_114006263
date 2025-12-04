@@ -263,7 +263,10 @@ class GameScene(Scene):
             self.setting_overlay.update(dt)
 
             # update volume dan mute setting
+            #Logger.info(f"Volume set to {self.slider_volume.get_value()}, Mute set to {self.checkbox_mute.is_checked()}")
+            #Logger.info(f"{self.slider_volume.value-self.slider_volume.x} / {self.slider_volume.width} = {self.slider_volume.get_value()}")
             GameSettings.AUDIO_VOLUME = self.slider_volume.get_value()
+
             GameSettings.MUTE = self.checkbox_mute.is_checked()
             sound_manager.apply_settings()
             
@@ -698,8 +701,8 @@ class GameScene(Scene):
                 highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
                 screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
                 
-                if pg.mouse.get_pressed()[0]:  # left click
-                    self.selected_item_index = items.index(it)
+                if pg.mouse.get_pressed()[0] and items.index(it) != 0:  # left click
+                    self.selected_item_index = items.index(it) # kecuali coins
 
             # tetep kehighlight kalo udah dipilih dan di shop
             if self.selected_item_index == items.index(it) and self.show_shop_overlay:

@@ -21,12 +21,26 @@ pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 20) # text size 20
 
 # enemy bakal milih random pokemon dari daftar ini
 ENEMY_MONSTER_POOL = [
-    {"name": "Pikachu", "hp": 40, "max_hp": 40, "level": 5, "sprite_path": "menu_sprites/menusprite3.png", "element": "Grass"},
-    {"name": "Charizard", "hp": 60, "max_hp": 60, "level": 8, "sprite_path": "menu_sprites/menusprite9.png", "element": "Fire"},
-    {"name": "Blastoise", "hp": 50, "max_hp": 50, "level": 6, "sprite_path": "menu_sprites/menusprite14.png", "element": "Water"},
-    {"name": "Venusaur",  "hp": 30,  "max_hp": 30, "level": 4, "sprite_path": "menu_sprites/menusprite16.png", "element": "Grass" }
+    {"name": "Pikachu", "hp": 40, "max_hp": 40, "level": 5, "sprite_path": "menu_sprites/menusprite3.png", "element": "Grass", "evolution_sprite_path": [
+        "menu_sprites/menusprite1.png",
+        "menu_sprites/menusprite2.png",
+        "menu_sprites/menusprite3.png"
+    ]},
+    {"name": "Charizard", "hp": 60, "max_hp": 60, "level": 8, "sprite_path": "menu_sprites/menusprite9.png", "element": "Fire", "evolution_sprite_path": [
+        "menu_sprites/menusprite7.png",
+        "menu_sprites/menusprite8.png",
+        "menu_sprites/menusprite9.png"
+    ]},
+    {"name": "Blastoise", "hp": 50, "max_hp": 50, "level": 6, "sprite_path": "menu_sprites/menusprite14.png", "element": "Water", "evolution_sprite_path": [
+        "menu_sprites/menusprite12.png",
+        "menu_sprites/menusprite13.png",
+        "menu_sprites/menusprite14.png"
+    ]},
+    {"name": "Venusaur",  "hp": 30,  "max_hp": 30, "level": 4, "sprite_path": "menu_sprites/menusprite16.png", "element": "Grass", "evolution_sprite_path": [
+        "menu_sprites/menusprite15.png",
+        "menu_sprites/menusprite16.png"
+    ]}
 ]
-
 class BattleScene(Scene):
 
     _pending_enemy = None     # tempat EnemyTrainer disimpen sebelum masuk
@@ -376,7 +390,7 @@ class BattleScene(Scene):
             return  # bukan buka item
         
         self.change_menu_cooldown = self.reset_menu_cooldown
-        self.turn = "player"
+        self.turn = "enemy"
         self.ignore_mouse_until_release = True
 
         Logger.info("[BATTLE] Back button clicked — Back to battle")
