@@ -176,8 +176,8 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 26.863827560572965,
-    "y": 25.76835569799678
+    "x": 22.472361615182532,
+    "y": 31.255830011551406
   },
   "bag": {
     "monsters": [
@@ -185,7 +185,7 @@
         "name": "Pichu",
         "hp": 50,
         "max_hp": 50,
-        "level": 14,
+        "level": 7,
         "sprite_path": "menu_sprites/menusprite1.png",
         "element": "Grass",
         "evolution": {
@@ -198,7 +198,7 @@
         "name": "Charmander",
         "hp": 100,
         "max_hp": 100,
-        "level": 14,
+        "level": 7,
         "sprite_path": "menu_sprites/menusprite7.png",
         "element": "Fire",
         "evolution": {
@@ -211,7 +211,7 @@
         "name": "Squirtle",
         "hp": 90,
         "max_hp": 90,
-        "level": 14,
+        "level": 7,
         "sprite_path": "menu_sprites/menusprite12.png",
         "element": "Water",
         "evolution": {
@@ -224,7 +224,7 @@
         "name": "Ivysaur",
         "hp": 80,
         "max_hp": 80,
-        "level": 14,
+        "level": 7,
         "sprite_path": "menu_sprites/menusprite15.png",
         "element": "Grass",
         "evolution": {

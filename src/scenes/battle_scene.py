@@ -333,6 +333,10 @@ class BattleScene(Scene):
 
             # evolve tiap 15 level
             if self.player_monster['level'] % 15 == 0:
+                
+                if self.player_monster["name"] == list(self.player_monster["evolution"].keys())[-1]:
+                    return  # gak bisa evolve lagi
+
                 self.evolve(self.player_monster)
                 Logger.info(f"[BATTLE] Player's monster evolved into {self.player_monster['name']}!")
                 self.txt2 += f" Your monster evolved into {self.player_monster['name']}!"

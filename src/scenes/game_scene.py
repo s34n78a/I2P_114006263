@@ -61,6 +61,7 @@ class GameScene(Scene):
 
         # Scale sampai sesuai ukuran overlay panel
         self.overlay_bg = pg.transform.scale(self.overlay_bg, (w, h))
+        self.popup_bg = pg.transform.scale(self.overlay_bg, (w//1.5, h//2))
 
         # bikin overlay untuk setting
         self.setting_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
@@ -70,6 +71,8 @@ class GameScene(Scene):
 
         # bikin overlay untuk shop (checkpoint 3)
         self.shop_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
+
+        self.confirm_popup = OverlayPanel((GameSettings.SCREEN_WIDTH - w//1.5) // 2, (GameSettings.SCREEN_HEIGHT - h//2) // 2, w//1.5, h//2, background_image=self.popup_bg)
 
         # bikin overlay untuk navigation (checkpoint 3)
         self.navigation_overlay = OverlayPanel(x, y, w, h, background_image=self.overlay_bg)
@@ -140,6 +143,16 @@ class GameScene(Scene):
         )
         self.shop_overlay.add_child(self.button_x_shop)
 
+        self.button_x_popup = Button(
+            "UI/button_x.png", "UI/button_x_hover.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) + 120,
+            y=(GameSettings.SCREEN_HEIGHT // 2) - 110,
+            width=40,
+            height=40,
+            on_click=self.close_popup_overlay
+        )
+        self.confirm_popup.add_child(self.button_x_popup)
+
         # Close button buat overlay navigation (checkpoint 3)
         self.button_x_navigation = Button(
             "UI/button_x.png", "UI/button_x_hover.png",
@@ -197,6 +210,38 @@ class GameScene(Scene):
         )
         self.shop_overlay.add_child(self.button_buy)
 
+        # buat popup confirm yes
+        yes_btn = Button(
+            "UI/raw/UI_Flat_Button01a_4.png",
+            "UI/raw/UI_Flat_Button01a_1.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) - 130,
+            y=(GameSettings.SCREEN_HEIGHT // 2) + 60,
+            width=100,
+            height=40,
+            on_click=lambda: self._confirm_yes()
+        )
+        self.confirm_popup.add_child(yes_btn)
+
+        yes_label = text_overlay_font.render("Yes", False, (0, 0, 0))
+        yes_label_rect = yes_label.get_rect(topleft=((GameSettings.SCREEN_WIDTH // 2) - 95, (GameSettings.SCREEN_HEIGHT // 2) + 70))
+        self.confirm_popup.add_child([yes_label, yes_label_rect])
+
+        # buat popup confirm no
+        no_btn = Button(
+            "UI/raw/UI_Flat_Button01a_4.png",
+            "UI/raw/UI_Flat_Button01a_1.png",
+            x=(GameSettings.SCREEN_WIDTH // 2) + 30,
+            y=(GameSettings.SCREEN_HEIGHT // 2) + 60,
+            width=100,
+            height=40,
+            on_click=lambda: self._confirm_no()
+        )
+        self.confirm_popup.add_child(no_btn)
+
+        no_label = text_overlay_font.render("No", False, (0, 0, 0))
+        no_label_rect = no_label.get_rect(topleft=((GameSettings.SCREEN_WIDTH // 2) + 70, (GameSettings.SCREEN_HEIGHT // 2) + 70))
+        self.confirm_popup.add_child([no_label, no_label_rect])
+
         # Checkbox for mute
         self.checkbox_mute = Checkbox(
             x=(GameSettings.SCREEN_WIDTH // 2 - 190),
@@ -219,6 +264,7 @@ class GameScene(Scene):
         self.show_setting_overlay = False
         self.show_backpack_overlay = False
         self.show_shop_overlay = False
+        self.show_popup_overlay = False
         self.show_navigation_overlay = False
 
         # Backpack list layout (buat ngegambar, 2 kolom)
@@ -231,6 +277,9 @@ class GameScene(Scene):
         # checkpoint 3
         self.selected_monster_index = None
         self.selected_item_index = None
+
+        self._pending_confirm_action = None
+        self._confirm_message = ""
 
         self.navigation_buttons = []
 
@@ -286,6 +335,10 @@ class GameScene(Scene):
         # Update overlay kalau overlay shop dibuka
         if self.show_shop_overlay:
             self.shop_overlay.update(dt)
+
+            if self.show_popup_overlay:
+                self.confirm_popup.update(dt)
+
             return # biar player ga bisa gerak di belakang overlay
         
         # checkpoint 3
@@ -400,6 +453,16 @@ class GameScene(Scene):
         self.show_shop_overlay = True
         self.shop_overlay.show()
 
+    def open_popup_overlay(self):
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
+            return
+        
+        if not self.show_shop_overlay:
+            return
+
+        self.show_popup_overlay = True
+        self.confirm_popup.show()
+
     def open_navigation_overlay(self):
         if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay or self.game_manager.navigation_active:
             return
@@ -427,7 +490,7 @@ class GameScene(Scene):
             place_name = dest["place_name"]
 
             label = text_overlay_font.render(place_name, False, (0, 0, 0))
-            label_rect = label.get_rect(topleft=(bx + 10, by + 10))
+            label_rect = label.get_rect(topleft=(bx + 20, by + 10))
 
             def make_handler(name=place_name):
                 def handler():
@@ -473,6 +536,10 @@ class GameScene(Scene):
         # monster id sama item id direset
         self.selected_monster_index = None
         self.selected_item_index = None
+
+    def close_popup_overlay(self):
+        self.show_popup_overlay = False
+        self.confirm_popup.hide()
 
     def close_navigation_overlay(self):
         self.show_navigation_overlay = False
@@ -581,6 +648,16 @@ class GameScene(Scene):
             screen.blit(sell_label, (GameSettings.SCREEN_WIDTH // 2 - 225, GameSettings.SCREEN_HEIGHT // 2 + 210))
             buy_label = text_overlay_font.render("Buy More Items", False, (0, 0, 0))
             screen.blit(buy_label, (GameSettings.SCREEN_WIDTH // 2 + 50, GameSettings.SCREEN_HEIGHT // 2 + 210))
+
+            if self.show_popup_overlay:
+                self.confirm_popup.draw(screen)
+
+                # isi popup
+                if self._confirm_message:
+                    txt = text_overlay_font.render(self._confirm_message, False, (0, 0, 0))
+                    txt_rect = txt.get_rect(center=(self.confirm_popup.x + self.confirm_popup.width // 2,
+                                                    self.confirm_popup.y + self.confirm_popup.height // 2 - 20))
+                    screen.blit(txt, txt_rect)
 
         # bikin layar overlay navigation kalo dibuka (checkpoint 3)
         elif self.show_navigation_overlay:
@@ -705,9 +782,9 @@ class GameScene(Scene):
             if mini_banner:
                 screen.blit(mini_banner, (x, y))
             
-            sprite = self._load_cached_sprite(sprite_path, (40, 40))
+            sprite = self._load_cached_sprite(sprite_path, (37, 37))
             if sprite:
-                screen.blit(sprite, (x+10, y))
+                screen.blit(sprite, (x+15, y+4))
 
             # name + level
             name_text = text_overlay_font.render(f"{name}  Lv:{level}", False, (0, 0, 0))
@@ -721,17 +798,18 @@ class GameScene(Scene):
             # highlight selected monster
             row_rect = pg.Rect(self.monster_column_x, y, 200, 50)
             
-            if row_rect.collidepoint(pg.mouse.get_pos()):
-                highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
+            if self.show_shop_overlay and not self.show_popup_overlay and row_rect.collidepoint(pg.mouse.get_pos()):
+                highlight_surf = pg.Surface((220, 50), pg.SRCALPHA)
                 highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
                 screen.blit(highlight_surf, (self.monster_column_x, y))
                 
                 if pg.mouse.get_pressed()[0]:  # left click
                     self.selected_monster_index = monsters.index(m)
+                    self.selected_item_index = None
 
             # tetep kehighlight kalo udah dipilih dan di shop
-            if self.selected_monster_index == monsters.index(m) and self.show_shop_overlay:
-                highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
+            if self.show_shop_overlay and not self.show_popup_overlay and self.selected_monster_index == monsters.index(m):
+                highlight_surf = pg.Surface((220, 50), pg.SRCALPHA)
                 highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
                 screen.blit(highlight_surf, (self.monster_column_x, y))
 
@@ -773,16 +851,17 @@ class GameScene(Scene):
             
             if row_rect.collidepoint(pg.mouse.get_pos()):
 
-                if self.show_shop_overlay and items.index(it) != 0:
+                if self.show_shop_overlay and not self.show_popup_overlay and items.index(it) != 0:
                     highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
                     highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
                     screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
                 
                 if pg.mouse.get_pressed()[0] and items.index(it) != 0:  # left click
                     self.selected_item_index = items.index(it) # kecuali coins
+                    self.selected_monster_index = None
 
             # tetep kehighlight kalo udah dipilih dan di shop
-            if self.selected_item_index == items.index(it) and self.show_shop_overlay:
+            if self.show_shop_overlay and not self.show_popup_overlay and self.selected_item_index == items.index(it):
                 highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
                 highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
                 screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
@@ -845,18 +924,23 @@ class GameScene(Scene):
         level = monster["level"] if isinstance(monster, dict) else monster.level
         coins_earned = level * 10
 
-        # Ilangin monster
-        if isinstance(self.game_manager.bag.monsters, list):
-            self.game_manager.bag.monsters.pop(idx)
-        else:
-            Logger.error("Bag monsters structure unexpected.")
+        msg = f"Sell {monster['name']} for {coins_earned} coins?"
 
-        # Tambah coins
-        self.game_manager.bag.add_item("Coins", coins_earned, "ingame_ui/coin.png")
+        def do_sell():
+            # Ilangin monster
+            if isinstance(self.game_manager.bag.monsters, list):
+                self.game_manager.bag.monsters.pop(idx)
+            else:
+                Logger.error("Bag monsters structure unexpected.")
 
-        Logger.info(f"Sold {monster['name']} for {coins_earned} coins!")
+            # Tambah coins
+            self.game_manager.bag.add_item("Coins", coins_earned, "ingame_ui/coin.png")
 
-        self.selected_monster_index = None
+            Logger.info(f"Sold {monster['name']} for {coins_earned} coins!")
+
+            self.selected_monster_index = None
+
+        self.open_confirm_popup(msg, do_sell)
 
     def buy_selected_item(self):
         _, items = self._get_bag_lists()
@@ -891,21 +975,46 @@ class GameScene(Scene):
         if coins < cost:
             Logger.warning("Not enough coins!")
             return
+        
+        msg = f"Buy 1 {item_name} for {cost} coins?"
 
-        # Kurangin coins
-        if isinstance(coin_item, dict):
-            coin_item["count"] -= cost
-        else:
-            coin_item.count -= cost
+        def do_buy():
+            # Kurangin coins
+            if isinstance(coin_item, dict):
+                coin_item["count"] -= cost
+            else:
+                coin_item.count -= cost
 
-        # Kasih item
-        if item_name[-6:] == "Potion":
-            sprite_path = "ingame_ui/potion.png"
-        else:
-            sprite_path = "ingame_ui/ball.png"
-        self.game_manager.bag.add_item(item_name, 1, sprite_path)
+            # Kasih item
+            if item_name[-6:] == "Potion":
+                sprite_path = "ingame_ui/potion.png"
+            else:
+                sprite_path = "ingame_ui/ball.png"
+            self.game_manager.bag.add_item(item_name, 1, sprite_path)
 
-        Logger.info("Bought 1 Potion for 20 coins!")
+            Logger.info(f"Bought 1 {item_name} for {cost} coins!")
+
+        self.open_confirm_popup(msg, do_buy)
+
+    def open_confirm_popup(self, message: str, on_confirm):
+        self._confirm_message = message
+        self._pending_confirm_action = on_confirm
+        self.open_popup_overlay()
+
+    def _confirm_yes(self):
+        if callable(self._pending_confirm_action):
+            try:
+                self._pending_confirm_action()
+            except Exception as e:
+                Logger.error(f"Confirm action failed: {e}")
+        self._pending_confirm_action = None
+        self._confirm_message = ""
+        self.close_popup_overlay()
+
+    def _confirm_no(self):
+        self._pending_confirm_action = None
+        self._confirm_message = ""
+        self.close_popup_overlay()
 
     def start_navigation_to_place(self, place_name: str):
         gm = self.game_manager

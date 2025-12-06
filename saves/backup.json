@@ -3,6 +3,8 @@
     {
       "path": "map.tmx",
       "enemy_trainers": [
+        { "x": 25, "y": 28, "classification": "stationary", "facing": "RIGHT", "max_tiles": 2 },
+        { "x": 24, "y": 28, "classification": "stationary", "facing": "LEFT", "max_tiles": 2 },
         { "x": 24, "y": 29, "classification": "stationary", "facing": "DOWN", "max_tiles": 2 },
         { "x": 54, "y": 16, "classification": "stationary", "facing": "UP", "max_tiles": 2 },
         { "x": 31, "y": 31, "classification": "stationary", "facing": "UP", "max_tiles": 2 }
@@ -116,15 +118,13 @@
   },
   "bag": {
     "monsters": [
-      { "name": "Pikachu",   "hp": 85,  "max_hp": 100, "level": 25, "sprite_path": "menu_sprites/menusprite1.png" },
-      { "name": "Charizard", "hp": 150, "max_hp": 200, "level": 36, "sprite_path": "menu_sprites/menusprite2.png" },
-      { "name": "Blastoise", "hp": 120, "max_hp": 180, "level": 32, "sprite_path": "menu_sprites/menusprite3.png" },
-      { "name": "Venusaur",  "hp": 90,  "max_hp": 160, "level": 30, "sprite_path": "menu_sprites/menusprite4.png" },
-      { "name": "Gengar",    "hp": 110, "max_hp": 140, "level": 28, "sprite_path": "menu_sprites/menusprite5.png" },
-      { "name": "Dragonite", "hp": 180, "max_hp": 220, "level": 40, "sprite_path": "menu_sprites/menusprite6.png" }
+      { "name": "Pichu",      "hp": 50,  "max_hp": 50,  "level": 7, "sprite_path": "menu_sprites/menusprite1.png",  "element": "Grass", "evolution": { "Pichu": "menu_sprites/menusprite1.png", "Pikachu": "menu_sprites/menusprite2.png", "Raichu": "menu_sprites/menusprite3.png" } },
+      { "name": "Charmander", "hp": 100, "max_hp": 100, "level": 7, "sprite_path": "menu_sprites/menusprite7.png",  "element": "Fire", "evolution": { "Charmander": "menu_sprites/menusprite7.png", "Charmeleon": "menu_sprites/menusprite8.png", "Charizard": "menu_sprites/menusprite9.png" } },
+      { "name": "Squirtle",   "hp": 90,  "max_hp": 90,  "level": 7, "sprite_path": "menu_sprites/menusprite12.png", "element": "Water", "evolution": { "Squirtle": "menu_sprites/menusprite12.png", "Wartortle": "menu_sprites/menusprite13.png", "Blastoise": "menu_sprites/menusprite14.png" } },
+      { "name": "Ivysaur",    "hp": 80,  "max_hp": 80,  "level": 7, "sprite_path": "menu_sprites/menusprite15.png", "element": "Grass", "evolution": { "Ivysaur": "menu_sprites/menusprite15.png", "Venusaur": "menu_sprites/menusprite16.png" } }
     ],
     "items": [
-      { "name": "Coins",       "count": 3,  "sprite_path": "ingame_ui/coin.png" },
+      { "name": "Coins",       "count": 100,  "sprite_path": "ingame_ui/coin.png" },
       { "name": "Health Potion",      "count": 5,  "sprite_path": "ingame_ui/potion.png" },
       { "name": "Strength Potion",      "count": 5,  "sprite_path": "ingame_ui/potion.png" },
       { "name": "Defense Potion",      "count": 5,  "sprite_path": "ingame_ui/potion.png" },
