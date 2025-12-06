@@ -23,6 +23,8 @@ class Player(Entity):
         self.auto_path = None
         self.auto_speed = 4.0 * GameSettings.TILE_SIZE
 
+        self._last_direction = None
+
     # cek collision sama enemy trainers lain
     def check_collision_with_enemies(self, rect:pg.Rect) -> bool:
         for enemy in self.game_manager.current_enemy_trainers:
@@ -84,12 +86,12 @@ class Player(Entity):
             dy = target_py - self.position.y
 
             # kalau dx dan dy 0, stuck di situ
-            if dx == 0 and dy == 0:
-                self.auto_path.pop(0)
-                if not self.auto_path:
-                    self.auto_path = None
-                dis = Position(0, 0)
-                return
+            # if dx == 0 and dy == 0:
+            #     self.auto_path.pop(0)
+            #     if not self.auto_path:
+            #         self.auto_path = None
+            #     dis = Position(0, 0)
+            #     return
 
             # If close → snap
             close_enough = self.auto_speed / GameSettings.TILE_SIZE
@@ -183,6 +185,25 @@ class Player(Entity):
         else:
             self._in_bush = False
 
+        # animation menghadap ke kiri, kanan, atas, bawah
+        direction = None
+        if dis.x > 0:
+            direction = "right"
+        elif dis.x < 0:
+            direction = "left"
+        elif dis.y > 0:
+            direction = "down"
+        elif dis.y < 0:
+            direction = "up"
+
+        if direction != self._last_direction and direction is not None:
+            self._last_direction = direction
+            self.animation.switch(direction)
+            self.animation.play()
+
+        if direction is None: # diem ga gerak
+            self._last_direction = None
+            self.animation.pause(reset_to_first=True)
 
         super().update(dt)
 

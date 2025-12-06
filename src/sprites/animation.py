@@ -43,14 +43,27 @@ class Animation(Sprite):
         self.loop = loop
         self.n_keyframes = n_keyframes
         self.rect = pg.Rect(0, 0, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+
+        #checkpoint 3
+        self._playing = True
             
     def switch(self, name: str):
         if name not in self.animations:
             Logger.error(f"name {name} not in animations list!")
         self.cur_row = name
+
+    # checkpoint 3
+    def play(self):
+        self._playing = True
+
+    def pause(self, reset_to_first: bool = True):
+        self._playing = False
+        if reset_to_first:
+            self.accumulator = 0
         
     def update(self, dt: float):
-         self.accumulator = (self.accumulator + dt) % self.loop
+         if self._playing:
+             self.accumulator = (self.accumulator + dt) % self.loop
         
     def draw(self, screen: pg.Surface, camera: Optional[PositionCamera] = None):
         frames = self.animations[self.cur_row]
