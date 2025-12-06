@@ -49,13 +49,13 @@ class Bag:
         return False
     
     def add_item(self, name: str, count: int = 1, sprite_path: str | None = None):
-        # Look for existing item
+        # cari dari item yg ada
         for item in self._items_data:
             if item["name"] == name:
                 item["count"] += count
                 return
 
-        # If not found, create new entry
+        # kalau ga ketemu, bikin entry baru (takutnya ada salah)
         self._items_data.append({
             "name": name,
             "count": count,

@@ -49,8 +49,6 @@ class GameManager:
         self.pending_navigation_map: str | None = None
         self.pending_navigation_path: list[tuple[int, int]] | None = None
         self.navigation_active: bool = False
-        # self.pending_navigation_current: int = 0
-        # self.pending_navigation_route: list | None = None
 
         # buat debugging
         #print("Loaded map keys:", list(self.maps.keys()))
@@ -115,24 +113,24 @@ class GameManager:
         self.next_map = ""
         self.should_change_scene = False
 
-        # Look for return teleporter (new map → previous map)
+        # cari return teleporter dari map baru ke map lama
         return_tp = None
         for tp in self.maps[new_map].teleporters:
             if tp.destination == old_map:
                 return_tp = tp
                 break
 
-        # Move player safely
+        # indahin player
         if self.player:
             if return_tp and not self.navigation_active and self.teleport_cooldown == 0:
                 Logger.info(f"Placing player at return teleporter {return_tp.pos} in {new_map}")
                 self.player.position = return_tp.pos.copy()
             else:
-                # safe fallback: map spawn
+                # kalau ada apa" ke map spawn
                 Logger.info(f"No return teleporter found; placing player at spawn in {new_map}")
                 self.player.position = self.maps[new_map].spawn.copy()
 
-            # set cooldown to prevent immediate retrigger
+            # set cooldown biar ga teleport terus
             self.teleport_cooldown = 15    # ~0.25s at 60 FPS
 
     def check_collision(self, rect: pg.Rect) -> bool:
@@ -198,7 +196,7 @@ class GameManager:
             self.compute_navigation_path()
             return
 
-        if not self.player.auto_path:  # Reached destination
+        if not self.player.auto_path:  # sampe destination
             Logger.info(f"Navigation complete to {self.pending_destination_name}")
             self.pending_navigation_path = None
             self.pending_destination_name = None

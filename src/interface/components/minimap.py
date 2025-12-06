@@ -40,10 +40,10 @@ class Minimap:
         bg_surf.fill((0, 0, 0, 120))
         screen.blit(bg_surf, (self.x, self.y))
 
-        # draw scaled map if pre-render surface exists
+        # bikin map lebih kecil kalau pre-render surface ada
         src_surface = cur_map._surface
         if src_surface:
-            # recreate cache only when map instance or minimap inner size changes
+            # bikin cache baru kalau map instance atau minimap berubah ukuran
             if self._cached_map is not cur_map or self._cached_size != (inner_w, inner_h) or self._cached_scaled is None:
                 try:
                     self._cached_scaled = pg.transform.smoothscale(src_surface, (inner_w, inner_h))
@@ -64,7 +64,7 @@ class Minimap:
         # border
         pg.draw.rect(screen, (200, 200, 200), self.rect, 1)
 
-        # draw player dot
+        # bikin player dot
         player = game_manager.player
         if player:
             sx = (inner_w) / map_w

@@ -7,7 +7,7 @@ from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
 from src.utils import Logger, PositionCamera, GameSettings, Position
 from src.core.services import sound_manager
-from src.sprites import Sprite
+from src.sprites import Sprite, Animation
 from src.interface.components.overlay import OverlayPanel
 from src.interface.components import Button
 from src.interface.components.checkbox import Checkbox
@@ -45,6 +45,9 @@ class GameScene(Scene):
         else:
             self.online_manager = None
         self.sprite_online = Sprite("ingame_ui/options1.png", (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE))
+
+        # simpen info player online (checkpoint 3)
+        self.online_sprites: dict[int, dict] = {}
         
         # Menu Button buat buka overlay (Checkpoint 2)
         w, h = 570, 550
@@ -310,6 +313,65 @@ class GameScene(Scene):
                 self.game_manager.player.position.y,
                 self.game_manager.current_map.path_name
             )
+
+            # update info player online (checkpoint 3)
+            list_online = self.online_manager.get_list_players()
+            cur_map_name = self.game_manager.current_map.path_name if self.game_manager.current_map else None
+            my_id = getattr(self.online_manager, "player_id", None)
+            for p in list_online:
+                try:
+                    pid = int(p.get("id", -1))
+                    if pid == my_id:
+                        continue
+                    if p.get("map") != cur_map_name:
+                        # remove cached kalau beda map
+                        if pid in self.online_sprites:
+                            del self.online_sprites[pid]
+                        continue
+                    px = float(p.get("x", 0))
+                    py = float(p.get("y", 0))
+                except Exception:
+                    continue
+                entry = self.online_sprites.get(pid)
+                if entry is None:
+                    # bikin animasi
+                    anim = Animation(
+                        "character/ow1.png", ["down", "left", "right", "up"], 4,
+                        (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+                    )
+                    anim.update_pos(Position(px, py))
+                    anim.pause(reset_to_first=True)
+                    entry = {"anim": anim, "last_pos": Position(px, py), "last_dir": None}
+                    self.online_sprites[pid] = entry
+
+                anim = entry["anim"]
+                last = entry["last_pos"]
+                dx = px - last.x
+                dy = py - last.y
+                # ngasih bates biar ga jitter
+                moved = (abs(dx) > 0.1) or (abs(dy) > 0.1)
+
+                direction = None
+                if moved:
+                    if abs(dx) >= abs(dy):
+                        direction = "right" if dx > 0 else "left"
+                    else:
+                        direction = "down" if dy > 0 else "up"
+
+                # update animation kalau gerak; pause kalau diem
+                if direction is None:
+                    anim.pause(reset_to_first=True)
+                    entry["last_dir"] = None
+                else:
+                    if direction != entry.get("last_dir"):
+                        anim.switch(direction)
+                        entry["last_dir"] = direction
+                    anim.play()
+
+                # update position terus lanjut animation
+                anim.update_pos(Position(px, py))
+                anim.update(dt)
+                entry["last_pos"] = Position(px, py)
     
     # buka tutup overlay
     def open_setting_overlay(self):
@@ -449,7 +511,15 @@ class GameScene(Scene):
                     cam = self.game_manager.player.camera
                     pos = cam.transform_position_as_position(Position(player["x"], player["y"]))
                     self.sprite_online.update_pos(pos)
-                    self.sprite_online.draw(screen)
+                    # self.sprite_online.draw(screen)
+
+        # checkpoint 3
+        if self.online_sprites:
+            cam = self.game_manager.player.camera if self.game_manager.player else PositionCamera(0, 0)
+            # draw each tiap animation setelah geser camera
+            for pid, entry in list(self.online_sprites.items()):
+                anim = entry["anim"]
+                anim.draw(screen, cam)
 
         # selalu bikin setting button
         self.setting_button.draw(screen)
@@ -612,7 +682,7 @@ class GameScene(Scene):
             screen.blit(hint, (x, y))
             return
         
-        # load mini banner once
+        # load mini banner sekali
         mini_banner = self._load_cached_sprite("UI/raw/UI_Flat_Banner03a.png", (220, 50))
 
         for m in monsters:
@@ -718,7 +788,7 @@ class GameScene(Scene):
                 screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
 
     def save_game(self):
-        # don't save while auto navigating (checkpoint 3)
+        # jangan save kalau auto navigating (checkpoint 3)
         if self.game_manager.navigation_active:
             Logger.warning("Cannot save while auto-navigating!")
             return

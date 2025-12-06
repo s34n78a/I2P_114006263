@@ -573,10 +573,9 @@ class BattleScene(Scene):
     def update(self, dt):
         Logger.info(f"cooldown: {self.change_menu_cooldown}")
 
-        # If we just changed menus, wait until the mouse button is released before processing further input.
-        # This prevents a single click from activating an overlapping button in the newly opened menu.
+        # kalau ga sengaja click pas ganti menu
         if self.ignore_mouse_until_release:
-            if pg.mouse.get_pressed()[0]:  # left mouse still pressed
+            if pg.mouse.get_pressed()[0]:  # left mouse masih teken
                 return
             else:
                 self.ignore_mouse_until_release = False

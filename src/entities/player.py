@@ -1,8 +1,6 @@
 from __future__ import annotations
 import pygame as pg
 
-#from src.core.managers import scene_manager
-#from src.core.managers.scene_manager import SceneManager
 from .entity import Entity
 from src.core.services import input_manager, scene_manager
 from src.utils import Position, PositionCamera, GameSettings, Logger
@@ -75,7 +73,6 @@ class Player(Entity):
         
         if self.auto_path: # checkpoint 3
             next_tx, next_ty = self.auto_path[0]
-            #Logger.info(f"Next auto tile: ({next_tx}, {next_ty})")
 
             target_px = next_tx * GameSettings.TILE_SIZE
             target_py = next_ty * GameSettings.TILE_SIZE
@@ -85,15 +82,7 @@ class Player(Entity):
             dx = target_px - self.position.x
             dy = target_py - self.position.y
 
-            # kalau dx dan dy 0, stuck di situ
-            # if dx == 0 and dy == 0:
-            #     self.auto_path.pop(0)
-            #     if not self.auto_path:
-            #         self.auto_path = None
-            #     dis = Position(0, 0)
-            #     return
-
-            # If close → snap
+            # Kalau deket, snap
             close_enough = self.auto_speed / GameSettings.TILE_SIZE
             if abs(dx) < close_enough and abs(dy) < close_enough:
                 self.position.x = target_px
@@ -103,10 +92,16 @@ class Player(Entity):
                 if not self.auto_path:
                     self.auto_path = None
 
-                # IMPORTANT: give no direction after snapping
                 dis = Position(0, 0)
+                if dis.x > 0:
+                    snap_direction = "right"
+                elif dis.x < 0:
+                    snap_direction = "left"
+                elif dis.y > 0:
+                    snap_direction = "down"
+                elif dis.y < 0:
+                    snap_direction = "up"
             else:
-                # NORMALIZED direction → this is the "WASD" replacement
                 dist = math.hypot(dx, dy)
                 dis = Position(dx / dist, dy / dist)
 
@@ -122,7 +117,27 @@ class Player(Entity):
             if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
                 dis.y += 1
 
+        # animation menghadap ke kiri, kanan, atas, bawah (checkpoint 3)
+        direction = None
+        if dis.x > 0:
+            direction = "right"
+        elif dis.x < 0:
+            direction = "left"
+        elif dis.y > 0:
+            direction = "down"
+        elif dis.y < 0:
+            direction = "up"
 
+        if direction != self._last_direction and direction is not None:
+            self._last_direction = direction
+            self.animation.switch(direction)
+            self.animation.play()
+
+        if direction is None: # diem ga gerak
+            self._last_direction = None
+            self.animation.pause(reset_to_first=True)
+
+        # hackathon
         length = math.hypot(dis.x, dis.y)
         if length != 0:
             dis.x = dis.x / length
@@ -132,7 +147,7 @@ class Player(Entity):
         move_x = dis.x * self.speed * dt
         move_y = dis.y * self.speed * dt
 
-        # --- Collision handling ---
+        # Collision handling
         tile_size = GameSettings.TILE_SIZE
         rect = pg.Rect(self.position.x, self.position.y, tile_size, tile_size)
         
@@ -168,15 +183,13 @@ class Player(Entity):
                 self.in_teleport = True
                 self.game_manager.previous_map_key = self.game_manager.current_map_key
                 self.game_manager.switch_map(tp.destination)
-            # else: player masih di dalem → do nothing
+            # else: player masih di dalem --> do nothing
         else:
-            # player keluar dari teleporter → reset
+            # player keluar dari teleporter --> reset
             self.in_teleport = False
 
         # Wild bush (check point 2)
-        #scene_manager = SceneManager()
         if self.game_manager.current_map.check_bush(self.position) and self.auto_path is None:
-            # prevent retrigger spam by storing last bush tile
             if not getattr(self, "_in_bush", False):
                 self._in_bush = True
                 from src.scenes.battle_scene import BattleScene
@@ -184,26 +197,6 @@ class Player(Entity):
                 scene_manager.change_scene("battle")
         else:
             self._in_bush = False
-
-        # animation menghadap ke kiri, kanan, atas, bawah
-        direction = None
-        if dis.x > 0:
-            direction = "right"
-        elif dis.x < 0:
-            direction = "left"
-        elif dis.y > 0:
-            direction = "down"
-        elif dis.y < 0:
-            direction = "up"
-
-        if direction != self._last_direction and direction is not None:
-            self._last_direction = direction
-            self.animation.switch(direction)
-            self.animation.play()
-
-        if direction is None: # diem ga gerak
-            self._last_direction = None
-            self.animation.pause(reset_to_first=True)
 
         super().update(dt)
 
