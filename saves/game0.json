@@ -176,17 +176,17 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 26.847514718625767,
-    "y": 27.34351471862576
+    "x": 26.863827560572965,
+    "y": 25.76835569799678
   },
   "bag": {
     "monsters": [
       {
-        "name": "Raichu",
-        "hp": 176,
-        "max_hp": 200,
-        "level": 31,
-        "sprite_path": "menu_sprites/menusprite3.png",
+        "name": "Pichu",
+        "hp": 50,
+        "max_hp": 50,
+        "level": 14,
+        "sprite_path": "menu_sprites/menusprite1.png",
         "element": "Grass",
         "evolution": {
           "Pichu": "menu_sprites/menusprite1.png",
@@ -195,11 +195,11 @@
         }
       },
       {
-        "name": "Charmeleon",
-        "hp": 150,
-        "max_hp": 200,
-        "level": 37,
-        "sprite_path": "menu_sprites/menusprite8.png",
+        "name": "Charmander",
+        "hp": 100,
+        "max_hp": 100,
+        "level": 14,
+        "sprite_path": "menu_sprites/menusprite7.png",
         "element": "Fire",
         "evolution": {
           "Charmander": "menu_sprites/menusprite7.png",
@@ -208,11 +208,11 @@
         }
       },
       {
-        "name": "Wartortle",
-        "hp": 120,
-        "max_hp": 180,
-        "level": 32,
-        "sprite_path": "menu_sprites/menusprite13.png",
+        "name": "Squirtle",
+        "hp": 90,
+        "max_hp": 90,
+        "level": 14,
+        "sprite_path": "menu_sprites/menusprite12.png",
         "element": "Water",
         "evolution": {
           "Squirtle": "menu_sprites/menusprite12.png",
@@ -221,11 +221,11 @@
         }
       },
       {
-        "name": "Venusaur",
-        "hp": 90,
-        "max_hp": 160,
-        "level": 31,
-        "sprite_path": "menu_sprites/menusprite16.png",
+        "name": "Ivysaur",
+        "hp": 80,
+        "max_hp": 80,
+        "level": 14,
+        "sprite_path": "menu_sprites/menusprite15.png",
         "element": "Grass",
         "evolution": {
           "Ivysaur": "menu_sprites/menusprite15.png",
@@ -236,27 +236,27 @@
     "items": [
       {
         "name": "Coins",
-        "count": 533,
+        "count": 100,
         "sprite_path": "ingame_ui/coin.png"
       },
       {
         "name": "Health Potion",
-        "count": 7,
+        "count": 5,
         "sprite_path": "ingame_ui/potion.png"
       },
       {
         "name": "Strength Potion",
-        "count": 6,
+        "count": 5,
         "sprite_path": "ingame_ui/potion.png"
       },
       {
         "name": "Defense Potion",
-        "count": 7,
+        "count": 5,
         "sprite_path": "ingame_ui/potion.png"
       },
       {
         "name": "Pokeball",
-        "count": 14,
+        "count": 10,
         "sprite_path": "ingame_ui/ball.png"
       }
     ]
@@ -264,59 +264,5 @@
   "audio": {
     "volume": 0.805,
     "mute": false
-  },
-  "navigation": {
-    "pending_map": null,
-    "pending_path": [
-      [
-        28,
-        31
-      ],
-      [
-        27,
-        31
-      ],
-      [
-        26,
-        31
-      ],
-      [
-        26,
-        30
-      ],
-      [
-        26,
-        29
-      ],
-      [
-        26,
-        28
-      ],
-      [
-        26,
-        27
-      ],
-      [
-        25,
-        27
-      ],
-      [
-        24,
-        27
-      ],
-      [
-        24,
-        26
-      ],
-      [
-        24,
-        25
-      ],
-      [
-        24,
-        24
-      ]
-    ],
-    "active": false
   }
 }

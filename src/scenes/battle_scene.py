@@ -161,7 +161,9 @@ class BattleScene(Scene):
 
         self.change_menu_cooldown = 0.001  # seconds
         self.reset_menu_cooldown = 0.001
-        self.ignore_mouse_until_release = False  # block input until the mouse button is released after menu changes
+        self.ignore_mouse_until_release = False  # biar ga sengaja click
+
+        self.player_turn_on_items = False
 
     # nanti dipanggil EnemyTrainer sebelum scene switch
     @classmethod
@@ -405,7 +407,7 @@ class BattleScene(Scene):
         self.ignore_mouse_until_release = True
 
         Logger.info("[BATTLE] Item button clicked — Open item menu")
-        self.txt1 = "No items implemented yet."
+        self.txt1 = "Player opens bag..."
         self.txt2 = ""
 
     def on_back(self):
@@ -413,7 +415,11 @@ class BattleScene(Scene):
             return  # bukan buka item
         
         self.change_menu_cooldown = self.reset_menu_cooldown
-        self.turn = "enemy"
+        if self.player_turn_on_items:
+            self.turn = "enemy"  # kalo udh pake item, langsung ke enemy turn
+            self.player_turn_on_items = False
+        else:
+            self.turn = "player" # cuma buka item doang
         self.ignore_mouse_until_release = True
 
         Logger.info("[BATTLE] Back button clicked — Back to battle")
@@ -441,6 +447,8 @@ class BattleScene(Scene):
         self.txt1 = f"Used Health Potion on {self.player_monster['name']}, healed {heal_amount} HP."
         self.txt2 = ""
 
+        self.player_turn_on_items = True  # turn dipake utk item
+
     def on_strength_potion(self):
         if self.turn != "item" and self.change_menu_cooldown > 0:
             return  # bukan buka item
@@ -453,11 +461,13 @@ class BattleScene(Scene):
             return
 
         # naikin level 1
-        self.player_damage_boost += 5
+        self.player_damage_boost += 10
 
         Logger.info(f"[BATTLE] Used Strength Potion on {self.player_monster['name']} (total boost: {self.player_damage_boost})")
         self.txt1 = f"Used Strength Potion on {self.player_monster['name']}, damage increased by total of {self.player_damage_boost}."
         self.txt2 = ""
+
+        self.player_turn_on_items = True  # turn dipake utk item
 
     def on_defense_potion(self):
         if self.turn != "item" and self.change_menu_cooldown > 0:
@@ -471,11 +481,13 @@ class BattleScene(Scene):
             return
 
         # naikin level 1
-        self.player_defense_boost += 5
+        self.player_defense_boost += 10
 
         Logger.info(f"[BATTLE] Used Defense Potion on {self.player_monster['name']} (total boost: {self.player_defense_boost})")
         self.txt1 = f"Used Defense Potion on {self.player_monster['name']}, defense increased by total of {self.player_defense_boost}."
         self.txt2 = ""
+
+        self.player_turn_on_items = True  # turn dipake utk item
 
     def enemy_attack_logic(self):
         its_effective = False

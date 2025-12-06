@@ -12,6 +12,7 @@ from src.interface.components.overlay import OverlayPanel
 from src.interface.components import Button
 from src.interface.components.checkbox import Checkbox
 from src.interface.components.slider import Slider
+from src.interface.components.minimap import Minimap
 from src.pathfinding.bfs import bfs_pathfind
 from typing import override
 
@@ -186,7 +187,7 @@ class GameScene(Scene):
         self.button_buy = Button(
             img_path="UI/button_shop.png",
             img_hovered_path="UI/button_shop_hover.png",
-            x=(GameSettings.SCREEN_WIDTH // 2 + 140),
+            x=(GameSettings.SCREEN_WIDTH // 2 + 165),
             y=(GameSettings.SCREEN_HEIGHT // 2 + 190),
             width=45, height=45,
             on_click=self.buy_selected_item
@@ -230,6 +231,8 @@ class GameScene(Scene):
 
         self.navigation_buttons = []
 
+        self.minimap = Minimap(x=10, y=10, width=250, height=150)
+
     @override
     def enter(self) -> None:
         sound_manager.play_bgm("RBY 103 Pallet Town.ogg")
@@ -266,7 +269,6 @@ class GameScene(Scene):
             #Logger.info(f"Volume set to {self.slider_volume.get_value()}, Mute set to {self.checkbox_mute.is_checked()}")
             #Logger.info(f"{self.slider_volume.value-self.slider_volume.x} / {self.slider_volume.width} = {self.slider_volume.get_value()}")
             GameSettings.AUDIO_VOLUME = self.slider_volume.get_value()
-
             GameSettings.MUTE = self.checkbox_mute.is_checked()
             sound_manager.apply_settings()
             
@@ -311,7 +313,7 @@ class GameScene(Scene):
     
     # buka tutup overlay
     def open_setting_overlay(self):
-        if self.show_backpack_overlay or self.show_shop_overlay or self.show_navigation_overlay:
+        if self.show_backpack_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
             return
 
         self.show_setting_overlay = True
@@ -322,7 +324,7 @@ class GameScene(Scene):
         self.checkbox_mute.checked = GameSettings.MUTE
 
     def open_backpack_overlay(self):
-        if self.show_setting_overlay or self.show_shop_overlay or self.show_navigation_overlay:
+        if self.show_setting_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
             return
 
         self.show_backpack_overlay = True
@@ -330,14 +332,14 @@ class GameScene(Scene):
 
     # checkpoint 3
     def open_shop_overlay(self):
-        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay:
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
             return
 
         self.show_shop_overlay = True
         self.shop_overlay.show()
 
     def open_navigation_overlay(self):
-        if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay:
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay or self.game_manager.navigation_active:
             return
         
         self.show_navigation_overlay = True
@@ -507,7 +509,7 @@ class GameScene(Scene):
             # label sell/buy
             sell_label = text_overlay_font.render("Sell Monsters", False, (0, 0, 0))
             screen.blit(sell_label, (GameSettings.SCREEN_WIDTH // 2 - 225, GameSettings.SCREEN_HEIGHT // 2 + 210))
-            buy_label = text_overlay_font.render("Buy Items", False, (0, 0, 0))
+            buy_label = text_overlay_font.render("Buy More Items", False, (0, 0, 0))
             screen.blit(buy_label, (GameSettings.SCREEN_WIDTH // 2 + 50, GameSettings.SCREEN_HEIGHT // 2 + 210))
 
         # bikin layar overlay navigation kalo dibuka (checkpoint 3)
@@ -518,6 +520,9 @@ class GameScene(Scene):
             title_text = title_font.render("Navigation", False, (0, 0, 0))
             title_rect = title_text.get_rect(center=(GameSettings.SCREEN_WIDTH // 2 - 150, GameSettings.SCREEN_HEIGHT // 2 - 210))
             screen.blit(title_text, title_rect)
+
+        # minimap
+        self.minimap.draw(screen, self.game_manager)
 
     def _get_bag_lists(self):
         """
@@ -608,7 +613,7 @@ class GameScene(Scene):
             return
         
         # load mini banner once
-        mini_banner = self._load_cached_sprite("UI/raw/UI_Flat_Banner03a.png", (200, 50))
+        mini_banner = self._load_cached_sprite("UI/raw/UI_Flat_Banner03a.png", (220, 50))
 
         for m in monsters:
             if isinstance(m, dict): # takutnya bukan dict
@@ -697,9 +702,11 @@ class GameScene(Scene):
             row_rect = pg.Rect(self.item_column_x, y - self.list_spacing, 200, 50)
             
             if row_rect.collidepoint(pg.mouse.get_pos()):
-                highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
-                highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
-                screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
+
+                if self.show_shop_overlay and items.index(it) != 0:
+                    highlight_surf = pg.Surface((200, 50), pg.SRCALPHA)
+                    highlight_surf.fill((255, 255, 0, 50))  # yellow highlight with alpha
+                    screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
                 
                 if pg.mouse.get_pressed()[0] and items.index(it) != 0:  # left click
                     self.selected_item_index = items.index(it) # kecuali coins
@@ -711,6 +718,11 @@ class GameScene(Scene):
                 screen.blit(highlight_surf, (self.item_column_x, y - self.list_spacing))
 
     def save_game(self):
+        # don't save while auto navigating (checkpoint 3)
+        if self.game_manager.navigation_active:
+            Logger.warning("Cannot save while auto-navigating!")
+            return
+
         # Save game state
         self.game_manager.save("saves/game0.json")
         

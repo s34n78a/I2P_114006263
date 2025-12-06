@@ -245,16 +245,6 @@ class GameManager:
             "audio": {
                 "volume": GameSettings.AUDIO_VOLUME,
                 "mute": GameSettings.MUTE
-            },
-            "navigation": {
-                "pending_map": self.pending_navigation_map,
-                "pending_path": self.pending_navigation_path,
-                "active": self.navigation_active,
-                # "current": self.pending_navigation_current,
-                # "route": [( (m if isinstance(m, str) else None), tp.to_dict() ) 
-                #            if isinstance(tp, Teleport) else (None, tp.to_dict() if hasattr(tp, "to_dict") else None)
-                #            for tp in (self.pending_navigation_route or [])] 
-                #         if self.pending_navigation_route else None
             }
         }
 
@@ -324,11 +314,5 @@ class GameManager:
         audio = data.get("audio", {})
         GameSettings.AUDIO_VOLUME = audio.get("volume", 0.5)
         GameSettings.MUTE = audio.get("mute", False)
-
-        # checkpoint 3
-        nav = data.get("navigation", {})
-        gm.pending_navigation_map = nav.get("pending_map")
-        gm.pending_navigation_path = nav.get("pending_path", [])
-        gm.navigation_active = nav.get("active", False)
             
         return gm

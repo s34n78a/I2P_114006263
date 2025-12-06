@@ -83,7 +83,13 @@ class Player(Entity):
             dx = target_px - self.position.x
             dy = target_py - self.position.y
 
-            #dis = Position(dx* self.auto_speed * dt, dy* self.auto_speed * dt)
+            # kalau dx dan dy 0, stuck di situ
+            if dx == 0 and dy == 0:
+                self.auto_path.pop(0)
+                if not self.auto_path:
+                    self.auto_path = None
+                dis = Position(0, 0)
+                return
 
             # If close → snap
             close_enough = self.auto_speed / GameSettings.TILE_SIZE
