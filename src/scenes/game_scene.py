@@ -16,7 +16,8 @@ from src.interface.components.minimap import Minimap
 from src.pathfinding.bfs import bfs_pathfind
 
 from typing import override, Dict, Tuple
-# from src.interface.components.chat_overlay import ChatOverlay
+from src.interface.components.chat_overlay import ChatOverlay
+from src.core.services import input_manager
 
 pg.init()
 
@@ -31,6 +32,7 @@ class GameScene(Scene):
     game_manager: GameManager
     online_manager: OnlineManager | None
     sprite_online: Sprite
+    chat_overlay: ChatOverlay | None
     
     def __init__(self):
         super().__init__()
@@ -44,12 +46,14 @@ class GameScene(Scene):
         # Online Manager
         if GameSettings.IS_ONLINE:
             self.online_manager = OnlineManager()
-            # self.chat_overlay = ChatOverlay(
-            #     send_callback=..., <- send chat method
-            #     get_messages=..., <- get chat messages method
-            # )
+            self.chat_overlay = ChatOverlay(
+                send_callback=self.online_manager.send_chat,# <- send chat method
+                get_messages=self.online_manager.get_recent_chat, # <- get chat messages method
+            )
         else:
             self.online_manager = None
+            self.chat_overlay = ChatOverlay(send_callback=None, get_messages=None)
+
         self.sprite_online = Sprite("ingame_ui/options1.png", (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE))
         self._chat_bubbles: Dict[int, Tuple[str, str]] = {}
         self._last_chat_id_seen = 0
@@ -356,14 +360,16 @@ class GameScene(Scene):
             return # biar player ga bisa gerak di belakang overlay
 
         # Update player dan enemy
-        if self.game_manager.player:
+        if self.game_manager.player and not self.chat_overlay.is_open:
             self.game_manager.player.update(dt)
         for enemy in self.game_manager.current_enemy_trainers:
-            enemy.update(dt)
+            if not self.chat_overlay.is_open:
+                enemy.update(dt)
 
         # Update shop keepers (checkpoint 3)
         for shop_keeper in self.game_manager.current_shop_keepers:
-            shop_keeper.update(dt)
+            if not self.chat_overlay.is_open:
+                shop_keeper.update(dt)
             
         # Update others
         self.game_manager.bag.update(dt)
@@ -397,6 +403,31 @@ class GameScene(Scene):
         #     except Exception:
         #         pass
         """
+
+        if self.chat_overlay:
+            if input_manager.key_pressed(pg.K_t): # buka chat pake key t
+                self.chat_overlay.open()
+            self.chat_overlay.update(dt)
+
+        if self.online_manager:
+            try:
+                msgs = self.online_manager.get_recent_chat(50)
+                max_id = self._last_chat_id_seen
+                now = time.monotonic()
+                for m in msgs:
+                    mid = int(m.get("id", 0))
+                    if mid <= self._last_chat_id_seen:
+                        continue
+                    sender = int(m.get("from", -1))
+                    text = str(m.get("text", ""))
+                    if sender >= 0 and text:
+                        self._chat_bubbles[sender] = (text, now + 5.0)
+                    if mid > max_id:
+                        max_id = mid
+                self._last_chat_id_seen = max_id
+            except Exception:
+                pass
+
         if self.game_manager.player is not None and self.online_manager is not None:
             _ = self.online_manager.update(
                 self.game_manager.player.position.x, 
@@ -465,7 +496,7 @@ class GameScene(Scene):
     
     # buka tutup overlay
     def open_setting_overlay(self):
-        if self.show_backpack_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
+        if self.show_backpack_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active or self.chat_overlay.is_open:
             return
 
         self.show_setting_overlay = True
@@ -476,7 +507,7 @@ class GameScene(Scene):
         self.checkbox_mute.checked = GameSettings.MUTE
 
     def open_backpack_overlay(self):
-        if self.show_setting_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
+        if self.show_setting_overlay or self.show_shop_overlay or self.show_navigation_overlay or self.game_manager.navigation_active or self.chat_overlay.is_open:
             return
 
         self.show_backpack_overlay = True
@@ -484,14 +515,14 @@ class GameScene(Scene):
 
     # checkpoint 3
     def open_shop_overlay(self):
-        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active or self.chat_overlay.is_open:
             return
 
         self.show_shop_overlay = True
         self.shop_overlay.show()
 
     def open_popup_overlay(self):
-        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active:
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_navigation_overlay or self.game_manager.navigation_active or self.chat_overlay.is_open:
             return
         
         if not self.show_shop_overlay:
@@ -501,7 +532,7 @@ class GameScene(Scene):
         self.confirm_popup.show()
 
     def open_navigation_overlay(self):
-        if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay or self.game_manager.navigation_active:
+        if self.show_setting_overlay or self.show_backpack_overlay or self.show_shop_overlay or self.game_manager.navigation_active or self.chat_overlay.is_open:
             return
         
         self.show_navigation_overlay = True
@@ -608,8 +639,8 @@ class GameScene(Scene):
 
         self.game_manager.bag.draw(screen)
 
-        # if self._chat_overlay:
-        #     self._chat_overlay.draw(screen)
+        if self.chat_overlay:
+            self.chat_overlay.draw(screen)
         
         if self.online_manager and self.game_manager.player:
             list_online = self.online_manager.get_list_players()
@@ -619,10 +650,10 @@ class GameScene(Scene):
                     pos = cam.transform_position_as_position(Position(player["x"], player["y"]))
                     self.sprite_online.update_pos(pos)
                     # self.sprite_online.draw(screen)
-            # try:
-            #     self._draw_chat_bubbles(...)
-            # except Exception:
-            #     pass
+            try:
+                self._draw_chat_bubbles(screen, camera)
+            except Exception:
+                pass
 
         # checkpoint 3
         if self.online_sprites:
@@ -717,15 +748,16 @@ class GameScene(Scene):
 
     def _draw_chat_bubbles(self, screen: pg.Surface, camera: PositionCamera) -> None:
         
-        # if not self.online_manager:
-        #     return
+        if not self.online_manager:
+            return
+        
         # REMOVE EXPIRED BUBBLES
-        # now = time.monotonic()
-        # expired = [pid for pid, (_, ts) in self._chat_bubbles.items() if ts <= now]
-        # for pid in expired:
-        #     self._chat_bubbles.____(..., ...)
-        # if not self._chat_bubbles:
-        #     return
+        now = time.monotonic()
+        expired = [pid for pid, (_, ts) in self._chat_bubbles.items() if ts <= now]
+        for pid in expired:
+            self._chat_bubbles.pop(pid, None) # none buat takut salah
+        if not self._chat_bubbles:
+            return
 
         # DRAW LOCAL PLAYER'S BUBBLE
         # local_pid = self.____
@@ -743,7 +775,38 @@ class GameScene(Scene):
         #     px, py = pos_xy
         #     self._draw_bubble_for_pos(..., ..., ..., ..., ...)
 
-        pass
+        # draw bubbles for each remaining
+        for pid, (text, ts) in self._chat_bubbles.items():
+            # get world position
+            if pid == self.online_manager.player_id:
+                # local player
+                if self.game_manager.player:
+                    world_pos = self.game_manager.player.position
+                else:
+                    continue
+            else:
+                # try cached online sprite pos
+                entry = self.online_sprites.get(pid)
+                if entry:
+                    world_pos = entry.get("last_pos")
+                else:
+                    # fallback: try to find in online_manager list
+                    try:
+                        lst = self.online_manager.get_list_players()
+                        wp = next((p for p in lst if int(p.get("id", -1)) == pid), None)
+                        if wp:
+                            world_pos = Position(float(wp.get("x", 0)), float(wp.get("y", 0)))
+                        else:
+                            continue
+                    except Exception:
+                        continue
+
+            # draw bubble for this world_pos
+            try:
+                self._draw_chat_bubble_for_pos(screen, camera, world_pos, text, minecraft_font)
+            except Exception:
+                continue
+
         """
         DRAWING CHAT BUBBLES:
         - When a player sends a chat message, the message should briefly appear above
@@ -783,7 +846,6 @@ class GameScene(Scene):
         """
 
     def _draw_chat_bubble_for_pos(self, screen: pg.Surface, camera: PositionCamera, world_pos: Position, text: str, font: pg.font.Font):
-        pass
         """
         Steps:
             ------------------
@@ -796,6 +858,45 @@ class GameScene(Scene):
             3. Measure the rendered text to determine bubble size.
             Add padding around the text.
         """
+
+        # Convert world position to screen position (slightly above head)
+        screen_pos = camera.transform_position_as_position(world_pos)
+        sx = int(screen_pos.x)
+        sy = int(screen_pos.y) - GameSettings.TILE_SIZE - 10  # above sprite
+
+        # Render text
+        words = text.splitlines()
+        lines = []
+        for w in words:
+            lines.append(w)
+        # build surface
+        padding_x = 8
+        padding_y = 6
+        line_surfs = [font.render(line, True, (0, 0, 0)) for line in lines]
+        width = max(s.get_width() for s in line_surfs) + padding_x * 2
+        height = sum(s.get_height() for s in line_surfs) + padding_y * 2
+
+        bubble = pg.Surface((width, height), pg.SRCALPHA)
+        # background white with border
+        bubble.fill((255, 255, 255, 230))
+        pg.draw.rect(bubble, (0, 0, 0), bubble.get_rect(), 1)
+
+        # blit text
+        y_off = padding_y
+        for s in line_surfs:
+            bubble.blit(s, (padding_x, y_off))
+            y_off += s.get_height()
+
+        # position bubble centered above player
+        bx = sx - width // 2 + 32
+        by = sy - height + 64
+
+        # clamp to screen bounds
+        sw, sh = screen.get_size()
+        bx = max(0, min(sw - width, bx))
+        by = max(0, min(sh - height, by))
+
+        screen.blit(bubble, (bx, by))
 
     def _get_bag_lists(self):
         """
