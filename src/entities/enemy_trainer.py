@@ -11,7 +11,7 @@ from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera, Logger
 
 from src.scenes.battle_scene import BattleScene 
-
+from src.sprites import Animation
 
 class EnemyTrainerClassification(Enum):
     STATIONARY = "stationary"
@@ -28,6 +28,8 @@ class EnemyTrainer(Entity):
     warning_sign: Sprite
     detected: bool
     los_direction: Direction
+
+    animation: Animation
 
     @override
     def __init__(
@@ -52,6 +54,13 @@ class EnemyTrainer(Entity):
         self.warning_sign = Sprite("exclamation.png", (GameSettings.TILE_SIZE // 2, GameSettings.TILE_SIZE // 2))
         self.warning_sign.update_pos(Position(x + GameSettings.TILE_SIZE // 4, y - GameSettings.TILE_SIZE // 2))
         self.detected = False
+
+        self.animation = Animation(
+            "character/ow4.png", ["down", "left", "right", "up"], 4,
+            (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+        )
+        self._set_direction(facing)
+        self.animation.update_pos(self.position)
 
     @override
     def update(self, dt: float) -> None:

@@ -7,6 +7,12 @@ from src.interface.components import Button
 from src.core.services import scene_manager, sound_manager, input_manager
 from typing import override
 
+pg.init()
+
+# untuk ngatur font
+pg.font.init()
+pokemon_font = pg.font.Font('assets/fonts/Pokemon Solid.ttf', 200)  # besar untuk judul
+
 class MenuScene(Scene):
     # Background Image
     background: BackgroundSprite
@@ -50,5 +56,15 @@ class MenuScene(Scene):
     @override
     def draw(self, screen: pg.Surface) -> None:
         self.background.draw(screen)
+        # judul game
+        title_text = "MonsterGo"
+        title_shadow = pokemon_font.render(title_text, True, (0, 0, 0))
+        title_surface = pokemon_font.render(title_text, True, (252, 107, 3))
+        title_rect = title_surface.get_rect(center=(GameSettings.SCREEN_WIDTH // 2, GameSettings.SCREEN_HEIGHT // 2))
+        
+        # shadow offset
+        screen.blit(title_shadow, title_rect.move(3, 3))
+        screen.blit(title_surface, title_rect)
+
         self.play_button.draw(screen)
         self.settings_button.draw(screen)
