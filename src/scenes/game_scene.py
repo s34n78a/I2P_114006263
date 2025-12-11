@@ -43,7 +43,7 @@ class GameScene(Scene):
             exit(1)
         self.game_manager = manager
         
-        # Online Manager
+        # Online Manager dan chat (checkpoint 3)
         if GameSettings.IS_ONLINE:
             self.online_manager = OnlineManager()
             self.chat_overlay = ChatOverlay(
@@ -777,20 +777,20 @@ class GameScene(Scene):
 
         # draw bubbles for each remaining
         for pid, (text, ts) in self._chat_bubbles.items():
-            # get world position
+            # ambil world position
             if pid == self.online_manager.player_id:
-                # local player
+                # khusus local player
                 if self.game_manager.player:
                     world_pos = self.game_manager.player.position
                 else:
                     continue
             else:
-                # try cached online sprite pos
+                # coba dari online sprites
                 entry = self.online_sprites.get(pid)
                 if entry:
                     world_pos = entry.get("last_pos")
                 else:
-                    # fallback: try to find in online_manager list
+                    # fallback: ambil dari online_manager list
                     try:
                         lst = self.online_manager.get_list_players()
                         wp = next((p for p in lst if int(p.get("id", -1)) == pid), None)
@@ -801,7 +801,7 @@ class GameScene(Scene):
                     except Exception:
                         continue
 
-            # draw bubble for this world_pos
+            # draw bubble utk player id yg skrg dicek
             try:
                 self._draw_chat_bubble_for_pos(screen, camera, world_pos, text, minecraft_font)
             except Exception:
@@ -859,17 +859,17 @@ class GameScene(Scene):
             Add padding around the text.
         """
 
-        # Convert world position to screen position (slightly above head)
+        # Convert dari world position ke screen position (sedikit di atas kepala)
         screen_pos = camera.transform_position_as_position(world_pos)
         sx = int(screen_pos.x)
-        sy = int(screen_pos.y) - GameSettings.TILE_SIZE - 10  # above sprite
+        sy = int(screen_pos.y) - GameSettings.TILE_SIZE - 10  # atas sprite
 
         # Render text
         words = text.splitlines()
         lines = []
         for w in words:
             lines.append(w)
-        # build surface
+        # bikin surface
         padding_x = 8
         padding_y = 6
         line_surfs = [font.render(line, True, (0, 0, 0)) for line in lines]
@@ -877,7 +877,7 @@ class GameScene(Scene):
         height = sum(s.get_height() for s in line_surfs) + padding_y * 2
 
         bubble = pg.Surface((width, height), pg.SRCALPHA)
-        # background white with border
+        # background white sama border
         bubble.fill((255, 255, 255, 230))
         pg.draw.rect(bubble, (0, 0, 0), bubble.get_rect(), 1)
 
@@ -887,11 +887,11 @@ class GameScene(Scene):
             bubble.blit(s, (padding_x, y_off))
             y_off += s.get_height()
 
-        # position bubble centered above player
+        # posisi bubble tengah" di atas player
         bx = sx - width // 2 + 32
         by = sy - height + 64
 
-        # clamp to screen bounds
+        # clamp ke screen bounds
         sw, sh = screen.get_size()
         bx = max(0, min(sw - width, bx))
         by = max(0, min(sh - height, by))
@@ -1021,8 +1021,7 @@ class GameScene(Scene):
             hp_text = text_overlay_font.render(f"HP: {hp}/{max_hp}", False, (0, 0, 0))
             screen.blit(hp_text, (x + 60, y + 25))
 
-            # checkpoint 3
-            # highlight selected monster
+            # highlight monster yg dipilih
             row_rect = pg.Rect(self.monster_column_x, y, 200, 50)
             
             if self.show_shop_overlay and not self.show_popup_overlay and row_rect.collidepoint(pg.mouse.get_pos()):
@@ -1072,8 +1071,7 @@ class GameScene(Scene):
             screen.blit(text, (x + 50, y + 10))
             y += self.list_spacing
 
-            # checkpoint 3
-            # highlight selected item
+            # highlight item yg dipilih
             row_rect = pg.Rect(self.item_column_x, y - self.list_spacing, 200, 50)
             
             if row_rect.collidepoint(pg.mouse.get_pos()):

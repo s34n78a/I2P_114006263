@@ -5,6 +5,30 @@ from .component import UIComponent
 from src.core.services import input_manager
 from src.utils import Logger
 
+# bikin dictionary utk input simbol dan angka
+key_map = {
+    pg.K_0: ("0", ")"),
+    pg.K_1: ("1", "!"),
+    pg.K_2: ("2", "@"),
+    pg.K_3: ("3", "#"),
+    pg.K_4: ("4", "$"),
+    pg.K_5: ("5", "%"),
+    pg.K_6: ("6", "^"),
+    pg.K_7: ("7", "&"),
+    pg.K_8: ("8", "*"),
+    pg.K_9: ("9", "("),
+    pg.K_MINUS: ("-", "_"),
+    pg.K_EQUALS: ("=", "+"),
+    pg.K_LEFTBRACKET: ("[", "{"),
+    pg.K_RIGHTBRACKET: ("]", "}"),
+    pg.K_BACKSLASH: ("\\", "|"),
+    pg.K_SEMICOLON: (";", ":"),
+    pg.K_QUOTE: ("'", "\""),
+    pg.K_COMMA: (",", "<"),
+    pg.K_PERIOD: (".", ">"),
+    pg.K_SLASH: ("/", "?"),
+    pg.K_BACKQUOTE: ("`", "~"),
+}
 
 class ChatOverlay(UIComponent):
     """Lightweight chat UI similar to Minecraft: toggle with a key, type, press Enter to send."""
@@ -49,6 +73,9 @@ class ChatOverlay(UIComponent):
             self._font_msg = pg.font.SysFont("Arial", 16)
             self._font_input = pg.font.SysFont("Arial", 16)
 
+        # bates input text
+        self.input_limit = 60
+
     def open(self) -> None:
         if not self.is_open:
             self.is_open = True
@@ -92,6 +119,24 @@ class ChatOverlay(UIComponent):
             if input_manager.key_pressed(k):
                 ch = chr(ord('a') + (k - pg.K_a))
                 self._input_text += (ch.upper() if shift else ch)
+
+        # input simbol
+        for key, (normal, shifted) in key_map.items():
+            if input_manager.key_pressed(key):
+                self._input_text += (shifted if shift else normal)
+
+        # spasi
+        if input_manager.key_pressed(pg.K_SPACE):
+            self._input_text += " "
+
+        # backspace
+        if input_manager.key_pressed(pg.K_BACKSPACE):
+            if len(self._input_text) > 0:
+                self._input_text = self._input_text[:-1]
+
+        # kasih bates biar ga kepanjangan
+        if len(self._input_text) > self.input_limit:
+            self._input_text = self._input_text[:self.input_limit]
 
         if input_manager.key_pressed(pg.K_RETURN) or input_manager.key_pressed(pg.K_KP_ENTER):
             txt = self._input_text.strip()
